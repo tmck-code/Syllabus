@@ -30,6 +30,16 @@ These are the two easiest options:
 
 This repository is hosted at at [https://github.com/tmck-code/Syllabus](https://github.com/tmck-code/Syllabus). You can navigate to one of the .ipynb files and use in github on the net, however this is read-only! You can't edit the file and save changes
 
+### Install the latest python
+
+You can find OSX python installers on the [official site](https://www.python.org/downloads/mac-osx/)
+
+In particular, the installer for 64-bit Python 3.6.5 (latest stable at the time of writing) is here: [https://www.python.org/ftp/python/3.6.5/python-3.6.5-macosx10.9.pkg](https://www.python.org/ftp/python/3.6.5/python-3.6.5-macosx10.9.pkg)
+
+1. Download and install in OSX
+2. Open a terminal and check that it's installed `python3 -V`
+3. Install Jupyter: `python3 -m pip install jupyter`
+
 * **_Pros_**: no installation of anything required
 * **_Cons_**: only on an internet connection, and you can't save your progress
 
