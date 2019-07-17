@@ -7,41 +7,36 @@ A collection of various lessons that I've written
 
 ___
 
-## Installing and Running
+## Installing and Running Python
 
-> There are a few choices for viewing and running the Jupyter notebooks, and each have their pros and cons.
+> This section is needed for all of the beginner lessons, and some of the wrangler lessons. If you already have a recent version of Python installed then you're ready to go.
 
-These are the two easiest options:
+### - Install the latest python
 
-### Install Anaconda **_(recommended)_**
+You can find OSX python installers on the [**official site**](https://www.python.org/downloads/mac-osx/). Follow the `"Latest Python 3 Release"` link at the top of the page, and then scroll down to download the `"macOS. 64-bit installer"`.
+
+In particular, the installer for 64-bit Python 3.7.4 (latest stable at the time of writing) is here: [https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.9.pkg](https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.9.pkg)
+
+1. Download and install in OSX
+2. Open a terminal and check that it's installed with `python3 -V`
+
+_For beginner lessons only:_
+
+3. Install Jupyter with `python3 -m pip install jupyter`
+
+* **_Pros_**: no installation of anything required
+* **_Cons_**: only on an internet connection, and you can't save your progress
+
+### - Install Anaconda **_(recommended for non-techies)_**
 
 1. Open anaconda
 2. Click on the 'Jupyter Notebook' tile
 3. When the terminal launches, type `jupyter notebook` and hit enter.
 4. An internet browser should open up displaying your home folder
-5. Navigate to the plac where you saved the .ipynb files and click into it
+5. Navigate to the place where you saved the .ipynb files and click into it
 
 * **_Pros_**: No internet required to run, can save changes locally
 * **_Cons_**: Anaconda is massive to install, and is a little confusing to use
-
-### Run from the github repository
-
-> (**View/Read only!**)
-
-This repository is hosted at at [https://github.com/tmck-code/Syllabus](https://github.com/tmck-code/Syllabus). You can navigate to one of the .ipynb files and use in github on the net, however this is read-only! You can't edit the file and save changes
-
-### Install the latest python
-
-You can find OSX python installers on the [official site](https://www.python.org/downloads/mac-osx/)
-
-In particular, the installer for 64-bit Python 3.6.5 (latest stable at the time of writing) is here: [https://www.python.org/ftp/python/3.6.5/python-3.6.5-macosx10.9.pkg](https://www.python.org/ftp/python/3.6.5/python-3.6.5-macosx10.9.pkg)
-
-1. Download and install in OSX
-2. Open a terminal and check that it's installed `python3 -V`
-3. Install Jupyter: `python3 -m pip install jupyter`
-
-* **_Pros_**: no installation of anything required
-* **_Cons_**: only on an internet connection, and you can't save your progress
 
 ___
 
@@ -62,3 +57,9 @@ Lessons will be added for these in the future.
 
 1. Collections (`lists` & `dictionaries`)
 2. OOP Basic Into (making a simple object)
+
+### Wranglers
+
+This set of lessons are aimed at briefly covering many relevant topics in turn, rather than focusing in-depth on each subject for a longer period.
+
+The aim is to help data wranglers become as effective as possible, as fast as possible.
