@@ -13,6 +13,9 @@ ___
 
 ### - Install the latest python
 
+* **_Pros_**: quick to download and install
+* **_Cons_**: require familiarity with the terminal
+
 You can find OSX python installers on the [**official site**](https://www.python.org/downloads/mac-osx/). Follow the `"Latest Python 3 Release"` link at the top of the page, and then scroll down to download the `"macOS. 64-bit installer"`.
 
 In particular, the installer for 64-bit Python 3.7.4 (latest stable at the time of writing) is here: [https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.9.pkg](https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.9.pkg)
@@ -23,9 +26,6 @@ In particular, the installer for 64-bit Python 3.7.4 (latest stable at the time 
 _For beginner lessons only:_
 
 3. Install Jupyter with `python3 -m pip install jupyter`
-
-* **_Pros_**: no installation of anything required
-* **_Cons_**: only on an internet connection, and you can't save your progress
 
 ### - Install Anaconda **_(recommended for non-techies)_**
 
