@@ -29,14 +29,14 @@ _For beginner lessons only:_
 
 ### - Install Anaconda **_(recommended for non-techies)_**
 
+* **_Pros_**: No internet required to run, can save changes locally
+* **_Cons_**: Anaconda is massive to install, and is a little confusing to use
+
 1. Open anaconda
 2. Click on the 'Jupyter Notebook' tile
 3. When the terminal launches, type `jupyter notebook` and hit enter.
 4. An internet browser should open up displaying your home folder
 5. Navigate to the place where you saved the .ipynb files and click into it
-
-* **_Pros_**: No internet required to run, can save changes locally
-* **_Cons_**: Anaconda is massive to install, and is a little confusing to use
 
 ___
 
