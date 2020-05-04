@@ -1,10 +1,12 @@
 import math
+from grid import PixelStates
 
 class Shape:
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, pixel_states: PixelStates = PixelStates()):
         self.width = width
         self.height = height
+        self.pixel_states = pixel_states
         self.__post_init__()
 
     def __post_init__(self):
@@ -17,7 +19,7 @@ class Shape:
         for y in range(0, self.height):
             for x in range(0, self.width):
                 if self.should_fill(x, y):
-                    yield x, y
+                    yield x, y, self.pixel_states.full
 
     def __str__(self):
         return f'{self.__class__.__name__}, coords: ' + list(self.draw())
@@ -58,7 +60,7 @@ class FilledCircle(Shape):
         if not is_odd(self.width):
             raise AttributeError('Must create circles with odd-numbered width & height')
 
-    def should_fill(self, x, y, tolerance=2):
+    def should_fill(self, x, y, tolerance=3):
         h, k = int(self.width/2), int(self.height/2)
         l = int((x-h)**2 + (y-k)**2)
         r = int(self.width/2)**2
