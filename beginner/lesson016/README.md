@@ -50,3 +50,20 @@ g.draw(s1, s2)
 # Now render the grid!
 print(g)
 ```
+
+## Implementing shapes
+
+Your shape has to inherit from Shape, and implement a single method interface
+
+e.g.
+
+```python
+class MyShape(Shape):
+
+    def should_fill(self, x, y):
+        'Return True if the pixel should be drawn, otherwise False'
+        pass
+```
+
+Then you can try it out using one of the methods above. Don't forget to reload
+your ipython interface if you've changed the file since launching it!
