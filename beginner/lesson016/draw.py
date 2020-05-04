@@ -15,7 +15,11 @@ def run(shape, width=10, height=10, padding=2, full='▣', empty='▢'):
             padding      = padding,
             pixel_states = grid.PixelStates(full, empty)
         )
-        obj = globals()[shape](width=width, height=height)
+        obj = globals()[shape](
+            width        = width,
+            height       = height,
+            pixel_states = grid.PixelStates(full, empty)
+        )
         g.draw(obj)
         print(f'{width}x{height} {shape}')
         print(g)
@@ -25,7 +29,7 @@ def run(shape, width=10, height=10, padding=2, full='▣', empty='▢'):
         sys.exit(1)
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Takes in a file of client data, cleans and inserts into a DB')
+    parser = ArgumentParser(description='Draws 2d shapes on a pixel grid')
     # import configuration arguments
     parser.add_argument('-s', '--shape',   action='store', help='shape to draw',                 type=str, required=True, dest='shape')
     parser.add_argument('-w', '--width',   action='store', help='width in pixels, default: 10',  type=int, default=10,    dest='width')
