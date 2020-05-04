@@ -9,16 +9,17 @@ ___
 
 ## Installing and Running Python
 
-> This section is needed for all of the beginner lessons, and some of the wrangler lessons. If you already have a recent version of Python installed then you're ready to go.
+> This section is needed for all of the beginner lessons, and some of the wrangler lessons.
+> If you already have a recent version of Python installed then you're ready to go.
 
 ### - Install the latest python
 
-* **_Pros_**: quick to download and install
-* **_Cons_**: require familiarity with the terminal
+You can find OSX python installers on the [**official site**](https://www.python.org/downloads/mac-osx/).
+Follow the `"Latest Python 3 Release"` link at the top of the page, and then scroll down to download the
+`"macOS. 64-bit installer"`.
 
-You can find OSX python installers on the [**official site**](https://www.python.org/downloads/mac-osx/). Follow the `"Latest Python 3 Release"` link at the top of the page, and then scroll down to download the `"macOS. 64-bit installer"`.
-
-In particular, the installer for 64-bit Python 3.7.4 (latest stable at the time of writing) is here: [https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.9.pkg](https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.9.pkg)
+In particular, the installer for 64-bit Python 3.8.2 (latest stable at the time of writing) is here:
+[https://www.python.org/ftp/python/3.8.2/python-3.8.2-macosx10.9.pkg](https://www.python.org/ftp/python/3.8.2/python-3.8.2-macosx10.9.pkg)
 
 1. Download and install in OSX
 2. Open a terminal and check that it's installed with `python3 -V`
@@ -27,16 +28,14 @@ _For beginner lessons only:_
 
 3. Install Jupyter with `python3 -m pip install jupyter`
 
-### - Install Anaconda **_(recommended for non-techies)_**
 
-* **_Pros_**: No internet required to run, can save changes locally
-* **_Cons_**: Anaconda is massive to install, and is a little confusing to use
+#### Alternative installation methods
 
-1. Open anaconda
-2. Click on the 'Jupyter Notebook' tile
-3. When the terminal launches, type `jupyter notebook` and hit enter.
-4. An internet browser should open up displaying your home folder
-5. Navigate to the place where you saved the .ipynb files and click into it
+You could alternatively use
+
+- `pyenv` if you want to maintain and switch between multiple python versions
+- `homebrew` if you like homebrew and know what you're doing to avoid wrecking
+    your PATH and PYENV ;)
 
 ___
 
