@@ -15,11 +15,14 @@ class Shape:
     def should_fill(self, x, y):
         raise NotImplementedError('Must implement should_fill(self, x, y) method')
 
+    def pixel_to_draw(self, x, y):
+        return self.pixel_states.full
+
     def draw(self):
         for y in range(0, self.height):
             for x in range(0, self.width):
                 if self.should_fill(x, y):
-                    yield x, y, self.pixel_states.full
+                    yield x, y, self.pixel_to_draw(x, y)
 
     def __str__(self):
         return f'{self.__class__.__name__}, coords: ' + list(self.draw())
