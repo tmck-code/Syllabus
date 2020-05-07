@@ -27,6 +27,24 @@ class Shape:
     def __str__(self):
         return f'{self.__class__.__name__}, coords: ' + list(self.draw())
 
+class FuzzyShape(Shape):
+    def __init__(self, *args, tolerance=2, debug=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tolerance = tolerance
+        self.debug = debug
+
+    def pixel_to_draw(self, x, y):
+        if self.debug:
+            return str(self.fill_calculation(x, y))
+        else:
+            return self.pixel_states.full
+
+    def should_fill(self, x, y):
+        return self.fill_calculation(x, y) < self.tolerance
+
+    def fill_calculation(self, x, y):
+        raise NotImplementedError('Must implement fill_calculation')
+
 # Squares ---------------------------------------
 
 class FilledSquare(Shape):
@@ -42,35 +60,22 @@ class HollowSquare(Shape):
 
 # Circles ---------------------------------------
 
-class FilledCircle(Shape):
+class FilledCircle(FuzzyShape):
     '''
-    from: https://www.purplemath.com/modules/sqrcircle.htm
-
-    The technique of completing the square is used to turn a quadratic into the
-    sum of a squared binomial and a number: (x – a)2 + b.
+    https://www.purplemath.com/modules/sqrcircle.htm
     The center-radius form of the circle equation is in the format
-
         (x – h)2 + (y – k)2 = r2
-
     where
-        (h,k) are the center coordinates, and
-        r is the radius.
-
-    This form of the equation is helpful, since you can easily find the center and the radius.
+        (h,k) are the center coordinates, and r is the radius.
     '''
 
-    def __post_init__(self):
-        if not is_odd(self.width):
-            raise AttributeError('Must create circles with odd-numbered width & height')
-
-    def should_fill(self, x, y, tolerance=3):
+    def fill_calculation(self, x, y):
         h, k = int(self.width/2), int(self.height/2)
         l = int((x-h)**2 + (y-k)**2)
         r = int(self.width/2)**2
+        return l - r
 
-        return l - r <= tolerance
-
-
-def is_odd(n):
-    return n & 1
+class Exponential(FuzzyShape):
+    def fill_calculation(self, x, y):
+        return abs((x**2) - y)
 

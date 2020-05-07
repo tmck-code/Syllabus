@@ -16,10 +16,6 @@ class CartesianGrid:
         self.height = height
         self.padding = padding
         self.pixel_states = pixel_states
-        self.grid = self.create_grid()
-
-    def create_grid(self):
-        self.grid = []
         self.clear_grid()
 
     def clear_grid(self):
