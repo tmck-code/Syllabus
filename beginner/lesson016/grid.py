@@ -19,12 +19,15 @@ class CartesianGrid:
         self.grid = self.create_grid()
 
     def create_grid(self):
-        grid = []
-        for _ in range(0, self.height+(self.padding*2)):
-            grid.append([self.pixel_states.empty for _ in range(0, self.width+(self.padding*2))])
-        return grid
+        self.grid = []
+        self.clear_grid()
 
-    def draw(self, *shapes, dx=0, dy=0):
+    def clear_grid(self):
+        self.grid = []
+        for _ in range(0, self.height+(self.padding*2)):
+            self.grid.append([self.pixel_states.empty for _ in range(0, self.width+(self.padding*2))])
+
+    def draw(self, *shapes, dx=0, dy=0, render=False):
         # Calculate the x, y of the grid center
         h, k = int(self.width/2), int(self.height/2)
         for shape in shapes:
@@ -33,6 +36,8 @@ class CartesianGrid:
             cx, cy = h-int(shape.width/2)+dx, k-int(shape.height/2)+dy
             for p, q, pixel in shape.draw():
                 self.fill_cell(p+cx, q+cy, pixel)
+        if render:
+            print(self.__str__())
 
     def fill_cell(self, x, y, pixel_state):
         self.grid[y+self.padding][x+self.padding] = pixel_state
