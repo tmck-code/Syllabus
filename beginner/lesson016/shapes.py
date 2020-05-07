@@ -1,18 +1,18 @@
 import math
-from grid import PixelStates
+from grid import Pixels
 
 class Shape:
 
-    def __init__(self, width, height, pixel_states: PixelStates = PixelStates()):
+    def __init__(self, width, height, pixels: Pixels = Pixels()):
         self.width = width
         self.height = height
-        self.pixel_states = pixel_states
+        self.pixels = pixels
 
     def should_fill(self, x, y):
         raise NotImplementedError('Must implement should_fill(self, x, y) method')
 
     def pixel_to_draw(self, x, y):
-        return self.pixel_states.full
+        return self.pixels.full
 
     def draw(self):
         for y in range(0, self.height):
@@ -41,7 +41,7 @@ class FuzzyShape(Shape):
         if self.debug:
             return str(self.fill_calculation(x, y))
         else:
-            return self.pixel_states.full
+            return self.pixels.full
 
 # Squares ---------------------------------------
 

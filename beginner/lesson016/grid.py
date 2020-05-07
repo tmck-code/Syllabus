@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 @dataclass
-class PixelStates:
+class Pixels:
     'Holds the two characters representing possible pixel state (full/empty)'
 
     full:  str = '▣'
@@ -10,20 +10,20 @@ class PixelStates:
 
 
 class CartesianGrid:
+    '''An x-y pixel grid. Optionally set padding width, and empty pixel that is used for all cells
+    in the 'blank' canvas'''
 
-    def __init__(self, width: int, height: int, padding: int = 0, pixel_states: PixelStates = PixelStates()):
+    def __init__(self, width: int, height: int, padding=0, pixels=Pixels()):
         self.width = width
         self.height = height
         self.padding = padding
-        self.pixel_states = pixel_states
-        self.clear_grid()
-
-    def clear_grid(self):
-        self.grid = []
-        for _ in range(0, self.height+(self.padding*2)):
-            self.grid.append([self.pixel_states.empty for _ in range(0, self.width+(self.padding*2))])
+        self.pixels = pixels
+        self.grid = self.__create_grid()
 
     def draw(self, *shapes, dx=0, dy=0, render=False):
+        '''Draws 1+ shapes on the canvas, with the shapes' starting coordinate optionally
+        translated by dx & dy. If render is True, returns the grid as a string'''
+
         # Calculate the x, y of the grid center
         h, k = int(self.width/2), int(self.height/2)
         for shape in shapes:
@@ -31,12 +31,22 @@ class CartesianGrid:
             # positioned in the centre of the grid
             cx, cy = h-int(shape.width/2)+dx, k-int(shape.height/2)+dy
             for p, q, pixel in shape.draw():
-                self.fill_cell(p+cx, q+cy, pixel)
+                self.__fill_cell(x=p+cx, y=q+cy, pixel=pixel)
         if render:
             return self.__str__()
 
-    def fill_cell(self, x, y, pixel_state):
-        self.grid[y+self.padding][x+self.padding] = pixel_state
+    def clear_grid(self):
+        'Sets the grid to its initial state, removing any drawn shapes'
+        self.grid = self.__create_grid()
+
+    def __create_grid(self):
+        grid = []
+        for _ in range(0, self.height+(self.padding*2)):
+            grid.append([self.pixels.empty for _ in range(0, self.width+(self.padding*2))])
+        return grid
+
+    def __fill_cell(self, x, y, pixel):
+        self.grid[y+self.padding][x+self.padding] = pixel
 
     def __str__(self):
         result = [' '*5 + ' '.join(map(str, range(0, len(self.grid[0]))))]
