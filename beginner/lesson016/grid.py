@@ -33,7 +33,7 @@ class CartesianGrid:
             for p, q, pixel in shape.draw():
                 self.fill_cell(p+cx, q+cy, pixel)
         if render:
-            print(self.__str__())
+            return self.__str__()
 
     def fill_cell(self, x, y, pixel_state):
         self.grid[y+self.padding][x+self.padding] = pixel_state

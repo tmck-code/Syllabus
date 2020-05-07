@@ -48,13 +48,11 @@ class FuzzyShape(Shape):
 # Squares ---------------------------------------
 
 class FilledSquare(Shape):
-
     def should_fill(self, x, y):
         return 0 <= x <= self.width and 0 <= y <= self.height
 
 
 class HollowSquare(Shape):
-
     def should_fill(self, x, y):
         return 0 in (y % (self.width-1), x % (self.width-1))
 
