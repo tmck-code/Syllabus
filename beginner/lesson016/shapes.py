@@ -1,12 +1,26 @@
 import math
 from grid import Pixels
 
+def construct(*shape_classes):
+    '''example usage:
+       C = shapes.construct(shapes.HollowSquare, shapes.DebugShape)
+       C(5, 5)
+    '''
+    class ConstructedShape(*shape_classes): pass
+    return ConstructedShape
+
+# Superclasses ----------------------------------
+
 class Shape:
 
     def __init__(self, width, height, pixels: Pixels = Pixels()):
         self.width = width
         self.height = height
         self.pixels = pixels
+        self.__post_init__()
+
+    def __post_init__(self):
+        pass
 
     def should_fill(self, x, y):
         raise NotImplementedError('Must implement should_fill(self, x, y) method')
@@ -26,16 +40,24 @@ class Shape:
 
 class FuzzyShape(Shape):
 
-    def __init__(self, *args, tolerance=2, debug=False, **kwargs):
+    def __init__(self, *args, tolerance=2, **kwargs):
         super().__init__(*args, **kwargs)
         self.tolerance = tolerance
-        self.debug = debug
 
     def should_fill(self, x, y):
         return self.fill_calculation(x, y) < self.tolerance
 
     def fill_calculation(self, x, y):
         raise NotImplementedError('Must implement fill_calculation')
+
+
+class DebugShape(FuzzyShape):
+    def __init__(self, *args, debug=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.debug = debug
+
+    def fill_calculation(self, x, y):
+        return int(self.should_fill(x, y))
 
     def pixel_to_draw(self, x, y):
         if self.debug:
@@ -65,6 +87,7 @@ class FilledCircle(FuzzyShape):
         r = int(self.width/2)
         return int((x-h)**2 + (y-k)**2) - r**2
 
+# Curves ----------------------------------------
 
 class Exponential(FuzzyShape):
     def fill_calculation(self, x, y):
