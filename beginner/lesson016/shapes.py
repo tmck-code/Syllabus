@@ -22,8 +22,11 @@ class Shape:
     def __post_init__(self):
         pass
 
+    def fill_calculation(self, x, y) -> bool:
+        raise NotImplementedError('Must implement fill_calculation(self, x, y) method')
+
     def should_fill(self, x, y):
-        raise NotImplementedError('Must implement should_fill(self, x, y) method')
+        return bool(self.fill_calculation(x, y))
 
     def pixel_to_draw(self, x, y):
         return self.pixels.full
@@ -48,6 +51,9 @@ class FuzzyShape(Shape):
         return self.fill_calculation(x, y) < self.tolerance
 
     def fill_calculation(self, x, y):
+        '''This produces a number that is compared against the tolerance.
+           If it is below (<) the required tolerance, the should_fill method
+           will return True'''
         raise NotImplementedError('Must implement fill_calculation')
 
 
@@ -56,24 +62,33 @@ class DebugShape(FuzzyShape):
         super().__init__(*args, **kwargs)
         self.debug = debug
 
-    def fill_calculation(self, x, y):
-        return int(self.should_fill(x, y))
-
     def pixel_to_draw(self, x, y):
+        'If debug=True, then the pixel will be the value of fill_calculation'
         if self.debug:
             return str(self.fill_calculation(x, y))
+        else:
+            return self.pixels.full
+
+class DebugCanvasShape(DebugShape):
+    def should_fill(self, x, y):
+        return True
+
+    def pixel_to_draw(self, x, y):
+        'If debug=True, then the pixel will be the value of fill_calculation'
+        if self.debug:
+            return str(int(self.fill_calculation(x, y)))
         else:
             return self.pixels.full
 
 # Squares ---------------------------------------
 
 class FilledSquare(Shape):
-    def should_fill(self, x, y):
+    def fill_calculation(self, x, y):
         return 0 <= x <= self.width and 0 <= y <= self.height
 
 
 class HollowSquare(Shape):
-    def should_fill(self, x, y):
+    def fill_calculation(self, x, y):
         return 0 in (y % (self.width-1), x % (self.width-1))
 
 # Circles ---------------------------------------
