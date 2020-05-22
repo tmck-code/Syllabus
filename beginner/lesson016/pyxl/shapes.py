@@ -1,8 +1,9 @@
+from dataclasses import dataclass
 import math
 from pyxl.grid import Pixels
 
 def construct(*shape_classes):
-    '''example usage:
+    '''e.g.:
        C = shapes.construct(shapes.HollowSquare, shapes.DebugShape)
        C(5, 5)
     '''
@@ -11,16 +12,13 @@ def construct(*shape_classes):
 
 # Superclasses ----------------------------------
 
+@dataclass
 class Shape:
+    width:  int
+    height: int
+    pixels: Pixels = Pixels()
 
-    def __init__(self, width, height, pixels: Pixels = Pixels()):
-        self.width = width
-        self.height = height
-        self.pixels = pixels
-        self.__post_init__()
-
-    def __post_init__(self):
-        pass
+    def __post_init__(self): pass
 
     def fill_calculation(self, x, y) -> bool:
         raise NotImplementedError('Must implement fill_calculation(self, x, y) method')
@@ -111,4 +109,3 @@ class HollowCircle(FilledCircle):
 class Exponential(FuzzyShape):
     def fill_calculation(self, x, y):
         return abs((x**2) - y)
-

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 class Pixels:
     'The characters that represent each possible pixel state (full/empty)'
 
-    full:  str = '▣'
+    full: str = '▣'
     empty: str = '▢'
 
 
@@ -12,8 +12,8 @@ class Pixels:
 class CartesianGrid:
     '''An x-y pixel grid. Optionally set padding width, and empty pixel'''
 
-    width:   int
-    height:  int
+    width: int
+    height: int
     padding: int = 0
     empty_pixel: str = Pixels.empty
 
