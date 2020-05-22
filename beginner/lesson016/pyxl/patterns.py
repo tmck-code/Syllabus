@@ -1,4 +1,4 @@
-import shapes
+from pyxl import shapes
 
 class Pattern:
     def __init__(self, width, height):

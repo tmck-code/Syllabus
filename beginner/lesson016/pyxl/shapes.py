@@ -1,5 +1,5 @@
 import math
-from grid import Pixels
+from pyxl.grid import Pixels
 
 def construct(*shape_classes):
     '''example usage:
