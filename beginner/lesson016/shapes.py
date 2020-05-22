@@ -102,16 +102,10 @@ class FilledCircle(FuzzyShape):
         r = int(self.width/2)
         return int((x-h)**2 + (y-k)**2) - r**2
 
-class HollowCircle(FuzzyShape):
-    '''(x – h)2 + (y – k)2 = r2
-       where (h,k) are the center coordinates, and r is the radius.'''
+class HollowCircle(FilledCircle):
     def should_fill(self, x, y):
         return -self.tolerance <= self.fill_calculation(x, y) < self.tolerance
 
-    def fill_calculation(self, x, y):
-        h, k = int(self.width/2), int(self.height/2)
-        r = int(self.width/2)
-        return int((x-h)**2 + (y-k)**2) - r**2
 # Curves ----------------------------------------
 
 class Exponential(FuzzyShape):

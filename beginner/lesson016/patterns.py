@@ -19,9 +19,7 @@ class Ring(Pattern):
 
 # e.g.
 # g = grid.CartesianGrid(41, 41, pixels=grid.Pixels(empty=' '))
-# draw_on_grid(g, patterns.Ring(21, 21), render=True)
-def draw_on_grid(grid, pattern, render=False):
+# draw_on_grid(g, patterns.Ring(21, 21))
+def draw_on_grid(grid, pattern):
     for s, kwargs in pattern.seq:
         grid.draw(s, **kwargs)
-    if render:
-        print(grid)
