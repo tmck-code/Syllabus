@@ -1,12 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass
-class Pixels:
-    'The characters that represent each possible pixel state (full/empty)'
-
-    full: str = '▣'
-    empty: str = '▢'
-
+DEFAULT_EMPTY_PIXEL = '▢'
 
 @dataclass
 class CartesianGrid:
@@ -15,7 +9,7 @@ class CartesianGrid:
     width: int
     height: int
     padding: int = 0
-    empty_pixel: str = Pixels.empty
+    empty_pixel: str = DEFAULT_EMPTY_PIXEL
 
     def __post_init__(self):
         self.grid = self.__create_grid()
@@ -33,7 +27,7 @@ class CartesianGrid:
             for p, q, pixel in shape.draw():
                 self.__fill_cell(x=p+cx, y=q+cy, pixel=pixel)
 
-    def clear_grid(self):
+    def clear(self):
         'Set the grid to its initial state, removing any drawn shapes'
         self.grid = self.__create_grid()
 

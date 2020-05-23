@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import math
-from pyxl.grid import Pixels
+from pyxl.pixels import BinaryPixels
 
 def construct(*shape_classes):
     '''e.g.:
@@ -16,7 +16,7 @@ def construct(*shape_classes):
 class Shape:
     width:  int
     height: int
-    pixels: Pixels = Pixels()
+    pixels: BinaryPixels = BinaryPixels()
 
     def __post_init__(self): pass
 
