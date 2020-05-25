@@ -1,13 +1,16 @@
 from dataclasses import dataclass
 
-DEFAULT_EMPTY_PIXEL = '▢'
-
 @dataclass
-class CartesianGrid:
-    '''An x-y pixel grid. Optionally set padding width, and empty pixel'''
-
+class Renderer:
+    '''An x-y pixel renderer.'''
     width: int
     height: int
+
+@dataclass
+class CartesianGrid(Renderer):
+    '''An x-y pixel grid. Optionally set padding width, and empty pixel'''
+    DEFAULT_EMPTY_PIXEL = '▢'
+
     padding: int = 0
     empty_pixel: str = DEFAULT_EMPTY_PIXEL
 
@@ -45,4 +48,13 @@ class CartesianGrid:
         for i, row in enumerate(self.grid):
             result.append(' '.join(['{:<4d}'.format(i)] + row))
         return '\n'.join(result)
+
+
+@dataclass
+class FillCommands(Renderer):
+    pass
+    def draw(self, *shapes):
+        for s in shapes:
+            for x, y, p in s.draw():
+                yield f'/fill {x} {y} 64 {x} {y} 64 {p}'
 
