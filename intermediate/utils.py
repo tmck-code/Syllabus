@@ -4,7 +4,7 @@ from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalTrueColorFormatter
 def ppj(j):
     print(highlight(
-        json.dumps(j, indent=2),
+        j,
         JsonLexer(),
         TerminalTrueColorFormatter(),
     ))
