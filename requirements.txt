@@ -1,5 +1,6 @@
 tabulate
 pygments
+mypy
 
 jupyter
 jupyterlab
@@ -9,3 +10,4 @@ aiohttp
 faker
 requests
 jupyterthemes
+tenacity

@@ -6,8 +6,6 @@ fake = Faker()
 
 class API:
     def get(url, kwargs={}, debug=False):
-        if url not in ENDPOINTS:
-            return KeyError(f'{url} endpoint does not exist')
         if debug:
             print('---', url, kwargs, ENDPOINTS[url])
         yield from ENDPOINTS[url](**kwargs)

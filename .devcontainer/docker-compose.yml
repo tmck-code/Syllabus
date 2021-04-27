@@ -9,8 +9,9 @@ services:
     # ensure the UID and GID of the container user you create matches your local user.
     # See https://aka.ms/vscode-remote/containers/non-root for details.
     #
-    # user: vscode
-    # environment:
+    user: jovyan
+    environment:
+      - JUPYTER_TOKEN=yolo
 
     # folder. Note that the path of the Dockerfile and context is relative to the *primary*
     # docker-compose.yml file (the first in the devcontainer.json "dockerComposeFile"
@@ -34,5 +35,5 @@ services:
     #   - seccomp:unconfined
 
     # Overrides default command so things don't shut down after the process ends.
-    command: /bin/sh -c "while sleep 1000; do :; done"
-
+    # command: /bin/sh -c "while sleep 1000; do :; done"
+    command: jupyter notebook --ip 0.0.0.0 --port 8888 --no-browser
