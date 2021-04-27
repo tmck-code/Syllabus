@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  lab:
+  syllabus:
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,7 +11,7 @@ services:
     volumes:
       - .:/code
       - vscode-syllabus:/root/.vscode-server
-    container_name: lab
+    container_name: syllabus
     links:
       - canned
 

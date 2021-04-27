@@ -1,8 +1,8 @@
 build:
-	docker-compose build lab
+	docker-compose build syllabus
 
-lab: build
+syllabus: build
 	docker-compose up
 	docker-compose down
 
-.PHONY: build lab
+.PHONY: build syllabus
