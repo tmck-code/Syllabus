@@ -1,11 +1,8 @@
 from collections import namedtuple
+from dataclasses import dataclass
 
 Config = namedtuple('Config', ['a', 'b'])
 
-def test_nt():
-    Config(1,2).a + 'a'
-
-from dataclasses import dataclass
 
 @dataclass
 class Obj:
@@ -13,5 +10,7 @@ class Obj:
     b: int = 2
     c: str = 'default'
 
-def test_dc():
-    Obj(1).a + 's'
+
+Obj(1).a + 's'
+def test_nt():
+    Config(1,2).a + 'a'

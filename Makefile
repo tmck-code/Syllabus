@@ -1,7 +1,7 @@
 build:
 	docker-compose build syllabus
 
-syllabus: build
+syllabus:
 	docker-compose up
 	docker-compose down
 

@@ -10,7 +10,7 @@ RUN curl -L https://rawgithub.com/minrk/ipython_extensions/master/nbextensions/t
 RUN jupyter nbextension enable toc
 
 # set dark theme
-RUN jt -t onedork
+# RUN jt -t onedork
 
 WORKDIR /code
 ADD . .
