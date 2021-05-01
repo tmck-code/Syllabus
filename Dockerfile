@@ -2,15 +2,21 @@ FROM jupyter/datascience-notebook
 
 ADD requirements.txt .
 
+USER root
+RUN apt update \
+    && apt install -y --no-install-recommends nodejs
+USER jovyan
+
+# RUN bash -c "$(wget -q -O - https://linux.kite.com/dls/linux/current)"
+
 RUN python3 -m pip install --no-cache-dir --upgrade -r requirements.txt
 
-# install extension - table of contents
-RUN jupyter nbextension install --user https://rawgithub.com/minrk/ipython_extensions/master/nbextensions/toc.js
-RUN curl -L https://rawgithub.com/minrk/ipython_extensions/master/nbextensions/toc.css > $(jupyter --data-dir)/nbextensions/toc.css
-RUN jupyter nbextension enable toc
-
-# set dark theme
-# RUN jt -t onedork
+# install extensions
+# - table of contents
+RUN jupyter labextension install \
+    @jupyterlab/toc
+    # @krassowski/jupyterlab_go_to_definition
+    # @lckr/jupyterlab_variableinspector
 
 WORKDIR /code
 ADD . .
