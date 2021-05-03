@@ -1,0 +1,13 @@
+tabulate
+pygments
+mypy
+
+jupyter
+jupyterlab
+rise
+
+aiohttp
+faker
+requests
+jupyterthemes
+tenacity
