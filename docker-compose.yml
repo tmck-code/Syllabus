@@ -12,8 +12,8 @@ services:
       - .:/code
       - vscode-syllabus:/root/.vscode-server
     container_name: syllabus
-    links:
-      - canned
+    # links:
+    #   - canned
 
   canned:
     build:
