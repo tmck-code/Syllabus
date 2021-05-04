@@ -5,6 +5,9 @@ mypy
 jupyter
 jupyterlab
 rise
+jupyterlab-drawio
+jupyterlab_execute_time
+# jupyterlab-kite>=2.0.2
 
 aiohttp
 faker
