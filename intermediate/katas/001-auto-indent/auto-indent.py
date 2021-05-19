@@ -94,14 +94,28 @@ tests = [
         ({ 'a': [1,2,3], 'b': { 'c': { 'd': [5,5,5] } }, 'z': 'hello world' }, 4),
         '{\n    "a": [1,2,3],\n    "b": {\n        "c": {\n            "d": [5,5,5]\n        }\n    },\n    "z": "hello world"\n}',
     ),
+    (
+        ({ "_outer": { "a": [1,2,3], "b": { "c": { "d": [5,5,5] } }, "z": "hello world" } }, 2),
+        '''\
+{
+  "_outer": {
+    "a": [1,2,3],
+    "b": {
+      "c": {
+        "d": [5,5,5]
+      }
+    },
+    "z": "hello world"
+  }
+}'''
+    ),
 ]
 
 
 for (data, indent), expected in tests:
     # result = pretty_json(data, indent)
     result = flatten_then_indent(data, indent)
-    print('result', result, sep='\n')
-    print('expected', expected, sep='\n')
+    print('-----', 'expected', expected,'result', result, sep='\n')
     for l1, l2 in zip(expected.split('\n'), result.split('\n')):
         assert l1 == l2, [l1, l2]
     assert result == expected, f'{result} != {expected}'
