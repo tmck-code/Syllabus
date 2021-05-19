@@ -61,11 +61,29 @@ def __group_by_n(items, n):
 import re
 
 def flatten_then_indent(raw: dict, indent=2) -> str:
+    ops = [
+        (r'(^{|}$)',  r'\n\1\n'),
+        (r'(], )(")', r'\1\n\2'),
+        (r'(},)( )',  r'\n\1\n'),
+        (r'(: {)',    r'\1\n'),
+        (r'(\])(})', r'\1\n\2'),
+    ]
     s = json.dumps(raw)
-    f1 = re.sub(r'({|})', r'\n\1\n', s)
-    f2 = re.sub(r'(], )(")', r'\1\n', f1)
-    f3 = re.sub(r'(])(])|(])(})', r'\1\n\2', f2)
-    return f3
+    for pattern, substitution in ops:
+        s = re.sub(pattern, substitution, s)
+    level = 0
+    ss = []
+    for line in map(str.strip, s.split('\n')):
+        if not line:
+            continue
+        if re.search(r'}$|},$|(}|\])\]$', line):
+            level -= 1
+            ss += [' '*(level*indent) + line]
+            continue
+        ss += [' '*(level*indent) + line]
+        if re.search(r': {|^{$|\[$', line):
+            level += 1
+    return '\n'.join(ss).replace(', ', ',')
 
 
 tests = [
