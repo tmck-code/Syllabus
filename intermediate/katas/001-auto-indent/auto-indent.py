@@ -62,20 +62,19 @@ import re
 
 def flatten_then_indent(raw: dict, indent=2) -> str:
     ops = [
-        (r'(^{|}$)',  r'\n\1\n'),
-        (r'(], )(")', r'\1\n\2'),
+        (r'(^{)',     r'\1\n'),
+        (r'(}$)',     r'\n\1'),
         (r'(},)( )',  r'\n\1\n'),
+        (r'(],)( )',  r'\1\n'),
         (r'(: {)',    r'\1\n'),
-        (r'(\])(})', r'\1\n\2'),
+        (r'(\])(})',  r'\1\n\2'),
     ]
     s = json.dumps(raw)
     for pattern, substitution in ops:
         s = re.sub(pattern, substitution, s)
     level = 0
     ss = []
-    for line in map(str.strip, s.split('\n')):
-        if not line:
-            continue
+    for line in s.split('\n'):
         if re.search(r'}$|},$|(}|\])\]$', line):
             level -= 1
             ss += [' '*(level*indent) + line]
