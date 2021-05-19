@@ -3,16 +3,6 @@ import json
 from glob import glob
 from itertools import zip_longest
 
-def __group_by_n(items, n):
-    for group in zip_longest(*[iter(items)]*n):
-        yield list(filter(None.__ne__, group))
-
-def __rec(raw: dict, indent=2, level=0) -> str:
-    print('up to', level, raw)
-    for k, v in raw.items():
-        if isinstance(v, dict):
-            return __rec(v, indent, level+1)
-
 def __inc(raw: dict, indent=2) -> str:
     inc_level = {'{'}
     dec_level = {'}'}
@@ -63,6 +53,21 @@ def pretty_json(raw: dict, indent=2) -> str:
     return __inc(raw, indent)
 
 
+def __group_by_n(items, n):
+    for group in zip_longest(*[iter(items)]*n):
+        yield list(filter(None.__ne__, group))
+
+
+import re
+
+def flatten_then_indent(raw: dict, indent=2) -> str:
+    s = json.dumps(raw)
+    f1 = re.sub(r'({|})', r'\n\1\n', s)
+    f2 = re.sub(r'(], )(")', r'\1\n', f1)
+    f3 = re.sub(r'(])(])|(])(})', r'\1\n\2', f2)
+    return f3
+
+
 tests = [
     (
         ({ 'a': [1,2,3], 'b': { 'c': { 'd': [5,5,5] } }, 'z': 'hello world' }, 2),
@@ -74,13 +79,12 @@ tests = [
     ),
 ]
 
-# for i, ((data, indent), expected) in enumerate(tests):
-#     print(i, expected, sep='\n')
 
 for (data, indent), expected in tests:
-    result = pretty_json(data, indent)
-    print('result\n', result)
-    print('expected\n', expected)
+    # result = pretty_json(data, indent)
+    result = flatten_then_indent(data, indent)
+    print('result', result, sep='\n')
+    print('expected', expected, sep='\n')
     for l1, l2 in zip(expected.split('\n'), result.split('\n')):
-        assert l1 == l2, f'{l1} != {l2}'
+        assert l1 == l2, [l1, l2]
     assert result == expected, f'{result} != {expected}'
