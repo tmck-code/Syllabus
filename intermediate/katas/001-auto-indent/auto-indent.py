@@ -2,8 +2,9 @@
 import json
 from glob import glob
 from itertools import zip_longest
+from dataclasses import dataclass
 
-def __inc(raw: dict, indent=2) -> str:
+def inc(raw: dict, indent=2) -> str:
     inc_level = {'{'}
     dec_level = {'}'}
     sdec_level = {'}', ']'}
@@ -48,16 +49,6 @@ def __inc(raw: dict, indent=2) -> str:
             pretty += ch
     return pretty + '\n'
 
-def pretty_json(raw: dict, indent=2) -> str:
-    'Returns an auto-indented/pretty JSON string'
-    return __inc(raw, indent)
-
-
-def __group_by_n(items, n):
-    for group in zip_longest(*[iter(items)]*n):
-        yield list(filter(None.__ne__, group))
-
-
 import re
 
 def flatten_then_indent(raw: dict, indent=2) -> str:
@@ -68,13 +59,14 @@ def flatten_then_indent(raw: dict, indent=2) -> str:
         (r'(],)( )',  r'\1\n'),
         (r'(: {)',    r'\1\n'),
         (r'(\])(})',  r'\1\n\2'),
+        (r'(\})(}|$)',  r'\n\1\n\2'),
     ]
     s = json.dumps(raw)
     for pattern, substitution in ops:
         s = re.sub(pattern, substitution, s)
     level = 0
     ss = []
-    for line in s.split('\n'):
+    for line in map(str.strip, s.split('\n')):
         if re.search(r'}$|},$|(}|\])\]$', line):
             level -= 1
             ss += [' '*(level*indent) + line]
@@ -82,27 +74,167 @@ def flatten_then_indent(raw: dict, indent=2) -> str:
         ss += [' '*(level*indent) + line]
         if re.search(r': {|^{$|\[$', line):
             level += 1
-    return '\n'.join(ss).replace(', ', ',')
+    print(ss)
+    return '\n'.join(ss).replace(', ', ',').strip()
+
+@dataclass
+class SlidingWindow:
+    obj: str
+    window_size: int = 3
+
+    def __iter__(self):
+        for i in range(0, len(self.obj)):
+            yield self.obj[i:i+self.window_size]
+
+def slide(raw: dict, indent=2) -> str:
+    level=0
+    ind = ' '*indent
+    w = SlidingWindow(json.dumps(raw)).__iter__()
+    print_space = True
+    fmt = ''
+    while True:
+        try:
+            i = next(w)
+        except StopIteration:
+            break
+        if i.startswith(' '):
+            if print_space:
+                fmt += ' '
+            print_space = True
+        elif i.startswith('{'):
+            fmt += i[0]+'\n'
+            level += 1
+            fmt += level*ind
+        elif i.startswith('['):
+            level += 1
+            fmt += i[0]+'\n'+level*ind
+        elif i.startswith((']', '}')):
+            level -= 1
+            fmt += '\n'+level*ind+i[0]
+        elif i.startswith(','):
+            fmt += i[0]+'\n'+level*ind
+            if i[1] == ' ':
+                print_space = False
+        else:
+            fmt += i[0]
+    return fmt
+
+from __future__ import annotations
+
+# -------------
+# {
+#   "a": "b"
+# }
+# -------------
+# {
+#   [
+#     1
+#   ]
+# }
+# 
+
+from collections import namedtuple
+
+BracketPair = namedtuple('BracketPair', ['left', 'right'])
+
+@dataclass
+class GroupMember:
+    value: object
+
+    def repr(self):
+        return str(self.value)
+
+@dataclass
+class IndentGroup:
+    children: list
+    brackets: BracketPair
+    indent: int = 4 * ' '
+
+    def repr(self):
+        fmt = self.brackets.left
+        for ch in self.children:
+            if isinstance(ch, IndentGroup):
+                fmt += ch.repr()
+            elif isinstance(ch, GroupMember):
+                fmt += self.indent
+        return fmt
+
+@dataclass
+class IndentGroup:
+    children: list
+    brackets: BracketPair
+    indent: int = 4 * ' '
+
+    def repr(self):
+        fmt = self.brackets.left
+        for ch in self.children:
+            if isinstance(ch, (list, dict)):
+                fmt += ch.repr()
+            elif isinstance(ch, GroupMember):
+                fmt += self.indent
+        return fmt
+
+
 
 
 tests = [
     (
         ({ 'a': [1,2,3], 'b': { 'c': { 'd': [5,5,5] } }, 'z': 'hello world' }, 2),
-        '{\n  "a": [1,2,3],\n  "b": {\n    "c": {\n      "d": [5,5,5]\n    }\n  },\n  "z": "hello world"\n}',
+'''{
+  "a": [
+    1,
+    2,
+    3
+  ],
+  "b": {
+    "c": {
+      "d": [
+        5,
+        5,
+        5
+      ]
+    }
+  },
+  "z": "hello world"
+}'''
     ),
     (
         ({ 'a': [1,2,3], 'b': { 'c': { 'd': [5,5,5] } }, 'z': 'hello world' }, 4),
-        '{\n    "a": [1,2,3],\n    "b": {\n        "c": {\n            "d": [5,5,5]\n        }\n    },\n    "z": "hello world"\n}',
+'''{
+    "a": [
+        1,
+        2,
+        3
+    ],
+    "b": {
+        "c": {
+            "d": [
+                5,
+                5,
+                5
+            ]
+        }
+    },
+    "z": "hello world"
+}'''
     ),
     (
         ({ "_outer": { "a": [1,2,3], "b": { "c": { "d": [5,5,5] } }, "z": "hello world" } }, 2),
         '''\
 {
   "_outer": {
-    "a": [1,2,3],
+    "a": [
+      1,
+      2,
+      3
+    ],
     "b": {
       "c": {
-        "d": [5,5,5]
+        "d": [
+          5,
+          5,
+          5
+        ]
       }
     },
     "z": "hello world"
@@ -111,11 +243,17 @@ tests = [
     ),
 ]
 
+def run_test():
+    for (data, indent), expected in tests:
+        # result = inc(data, indent)
+        # result = flatten_then_indent(data, indent)
+        result = slide(data, indent)
+        print('-----', 'expected', expected,'result', result, sep='\n')
+        for l1, l2 in zip(expected.split('\n'), result.split('\n')):
+            assert l1 == l2, [l1, l2]
+        assert result == expected, f'{result} != {expected}'
 
-for (data, indent), expected in tests:
-    # result = pretty_json(data, indent)
-    result = flatten_then_indent(data, indent)
-    print('-----', 'expected', expected,'result', result, sep='\n')
-    for l1, l2 in zip(expected.split('\n'), result.split('\n')):
-        assert l1 == l2, [l1, l2]
-    assert result == expected, f'{result} != {expected}'
+
+
+if __name__ == '__main__':
+    run_test()
