@@ -3,8 +3,8 @@ FROM jupyter/datascience-notebook
 ADD requirements.txt .
 
 USER root
-RUN apt update \
-    && apt install -y --no-install-recommends nodejs
+RUN apt update && \
+    apt install -y --no-install-recommends nodejs time fortune fortunes
 USER jovyan
 
 # RUN bash -c "$(wget -q -O - https://linux.kite.com/dls/linux/current)"
