@@ -26,7 +26,10 @@
 
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
-		"ms-python.python", "ms-python.vscode-pylance"
+		"ms-python.python",
+		"ms-python.vscode-pylance",
+		"matangover.mypy",
+		"yzhang.markdown-all-in-one"
 	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
