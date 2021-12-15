@@ -13,10 +13,10 @@ RUN python3 -m pip install --no-cache-dir --upgrade -r requirements.txt
 
 # install extensions
 # - table of contents
-RUN jupyter labextension install \
-    @jupyterlab/toc
-    # @krassowski/jupyterlab_go_to_definition
-    # @lckr/jupyterlab_variableinspector
+# RUN jupyter labextension install \
+#   @jupyterlab/toc
+#   @krassowski/jupyterlab_go_to_definition
+#   @lckr/jupyterlab_variableinspector
 
 WORKDIR /code
 ADD . .
