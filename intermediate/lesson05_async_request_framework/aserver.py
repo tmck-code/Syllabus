@@ -6,7 +6,10 @@ from dataclasses import dataclass
 import time
 import functools
 
-class RateLimitError(Exception): pass
+class RateLimitError(Exception):
+    def __init__(self, *args, info: dict = {}, **kwargs):
+        self.info = info
+        super().__init__(*args, **kwargs)
 
 @dataclass
 class Rater:
@@ -29,18 +32,24 @@ class Rater:
         self.total += 1
         # If there are too many requests, raise error
         if self.total > self.max_requests:
-            raise RateLimitError(json.dumps({
-                "limit": self.rate_limit,
-                "current": self.total,
-                "remaining": self.__time_remaining()
-            }))
+            raise RateLimitError(
+                "Exceeded rate limit",
+                info={
+                    "limit": self.max_requests,
+                    "current": self.total,
+                    "remaining": self.__time_remaining()
+                }
+            )
     
 def with_rater(func):
     @functools.wraps(func)
     async def wrapped(*args, **kwargs):
         print(f"Request to '{func.__name__}': {args[1]}")
 
-        args[0].rate_limit.inc()
+        try:
+            args[0].rate_limit.inc()
+        except RateLimitError as e:
+            return web.Response(text=json.dumps({"error": e.info})+"\n")
         return await func(*args, **kwargs)
     return wrapped
 
@@ -62,33 +71,12 @@ class API:
     async def get_items(self, request):
         return web.Response(text=json.dumps(list(range(100))))
 
-
-    def rate_limit(func):
-        @functools.wraps(func)
-        async def wrapped(*args, **kwargs):
-
-            cls = args[0]
-            elapsed = time.time()-cls.last_request
-
-            print("elapsed", elapsed)
-            sleep_time = 0
-            if elapsed < cls.rate_limit:
-                sleep_time = cls.rate_limit - elapsed
-            print("sleeping for", sleep_time)
-            await asyncio.sleep(sleep_time)
-
-            print("rate limit released")
-            cls.last_request = time.time()
-
-            return await func(*args, **kwargs)
-        return wrapped
-
 def run():
     app = web.Application()
     api = API(rate_limit=Rater(60, 60), max_items=100)
     app.add_routes(
         [
-            web.get('/', api.get_root),
+            web.get('/',      api.get_root),
             web.get('/items', api.get_items),
         ]
     )
