@@ -48,7 +48,7 @@ def with_rater(func):
         try:
             args[0].rate_limit.inc()
         except RateLimitError as e:
-            return web.Response(text=json.dumps({"error": e.info})+"\n", status=429)
+            return web.Response(text=json.dumps({"error": e.info}), status=429)
         return await func(*args, **kwargs)
     return wrapped
 
@@ -75,7 +75,7 @@ class API:
     @with_rater
     async def get_item(self, request):
         idx = int(request.match_info["id"])
-        return web.Response(text=json.dumps({"email": self.items[idx]}) + "\n")
+        return web.Response(text=json.dumps({"email": self.items[idx]}))
 
 def run():
     app = web.Application()
