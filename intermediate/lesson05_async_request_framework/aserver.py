@@ -14,18 +14,18 @@ class RateLimitError(Exception):
 @dataclass
 class Rater:
     max_requests: int
-    time_window: int
+    time_window: int = 60
 
     def __post_init__(self):
         self.start_time = time.time()
         self.total = 0
 
     def __time_remaining(self):
-        return 60-(time.time()-self.start_time)
+        return self.time_window-(time.time()-self.start_time)
 
     def inc(self):
         # If we are over the time window, reset counter & time
-        if (time.time() - self.start_time) > 60:
+        if (time.time() - self.start_time) > self.time_window:
             self.total = 0
             self.start_time = time.time()
         # Now, increment the total
@@ -48,6 +48,7 @@ def with_rater(func):
         try:
             args[0].rate_limit.inc()
         except RateLimitError as e:
+            print(f"Rate limiting!", e.info)
             return web.Response(text=json.dumps({"error": e.info}), status=429)
         return await func(*args, **kwargs)
     return wrapped
@@ -77,9 +78,9 @@ class API:
         idx = int(request.match_info["id"])
         return web.Response(text=json.dumps({"email": self.items[idx]}))
 
-def run():
+def run(rate_limit: Rater, max_items: int):
+    api = API(rate_limit=rate_limit, max_items=max_items)
     app = web.Application()
-    api = API(rate_limit=Rater(60, 60), max_items=10_000)
     app.add_routes(
         [
             web.get('/',      api.get_root),
@@ -90,4 +91,4 @@ def run():
     web.run_app(app)
 
 if __name__ == "__main__":
-    run()
+    run(rate_limit=Rater(600, 60), max_items=10_000)

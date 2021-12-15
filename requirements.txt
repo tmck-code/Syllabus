@@ -7,10 +7,13 @@ jupyterlab
 rise
 jupyterlab-drawio
 jupyterlab_execute_time
+memory_profiler
 # jupyterlab-kite>=2.0.2
 
 aiohttp
+throttler
 faker
 requests
 jupyterthemes
 tenacity
+
