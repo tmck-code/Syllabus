@@ -53,7 +53,6 @@ def with_rater(func):
         return await func(*args, **kwargs)
     return wrapped
 
-from collections import deque
 
 @dataclass
 class API:
@@ -63,7 +62,7 @@ class API:
     def __post_init__(self):
         self.last_request = time.time()
         self.faker = Faker()
-        self.items = deque(self.faker.email() for _ in range(self.max_items))
+        self.items = [self.faker.email() for _ in range(self.max_items)]
 
     @with_rater
     async def get_root(self, request):
