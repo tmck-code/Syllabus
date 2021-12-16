@@ -71,7 +71,7 @@ class API:
 
     @with_rater
     async def get_items(self, request):
-        return web.Response(text=json.dumps(list(range(100))))
+        return web.Response(text=json.dumps(list(range(self.max_items))))
 
     @with_rater
     async def get_item(self, request):
@@ -91,4 +91,4 @@ def run(rate_limit: Rater, max_items: int):
     web.run_app(app)
 
 if __name__ == "__main__":
-    run(rate_limit=Rater(600, 60), max_items=10_000)
+    run(rate_limit=Rater(6_000, 60), max_items=1_000)

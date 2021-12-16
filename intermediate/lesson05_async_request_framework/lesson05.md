@@ -12,3 +12,6 @@ Make 1 coroutine per async request that needs to be made
 
 Make 1 couroutine per "rate limited worker"
 - Can use number of workers == number of items allowed in rate limit period
+- Can make specialised workers for cases like pagination
+- Can use a queue to control rate limiting/pausing across async coroutines
+  - i.e. if one coroutine receives a 503, stop ALL coroutines for N period
