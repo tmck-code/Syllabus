@@ -40,7 +40,7 @@ class Rater:
                     "remaining": self.__time_remaining()
                 }
             )
-    
+
 def with_rater(func):
     @functools.wraps(func)
     async def wrapped(*args, **kwargs):
@@ -77,17 +77,24 @@ class API:
         idx = int(request.match_info["id"])
         return web.Response(text=json.dumps({"email": self.items[idx]}))
 
-def run(rate_limit: Rater, max_items: int):
-    api = API(rate_limit=rate_limit, max_items=max_items)
-    app = web.Application()
-    app.add_routes(
-        [
-            web.get('/',      api.get_root),
-            web.get('/items', api.get_items),
-            web.get('/items/{id}', api.get_item),
+    def routes(self):
+        return [
+            web.get('/',           self.get_root),
+            web.get('/items',      self.get_items),
+            web.get('/items/{id}', self.get_item),
         ]
-    )
-    web.run_app(app)
+
+
+@dataclass
+class AServer:
+    rate_limit: Rater
+    max_items: int
+
+    def run(self):
+        api = API(rate_limit=self.rate_limit, max_items=self.max_items)
+        app = web.Application()
+        app.add_routes(api.routes())
+        web.run_app(app)
 
 if __name__ == "__main__":
-    run(rate_limit=Rater(6_000, 60), max_items=1_000)
+    AServer(rate_limit=Rater(6_000, 60), max_items=1_000).run()
