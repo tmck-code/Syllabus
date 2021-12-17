@@ -5,11 +5,14 @@ from dataclasses import dataclass
 import time
 import functools
 from faker import Faker
+from random import randint
 
-class RateLimitError(Exception):
+class APIError(Exception):
     def __init__(self, *args, info: dict = {}, **kwargs):
         self.info = info
         super().__init__(*args, **kwargs)
+
+class RateLimitError(APIError): pass
 
 @dataclass
 class Rater:
@@ -40,6 +43,11 @@ class Rater:
                     "remaining": self.__time_remaining()
                 }
             )
+        self.__random_errorz()
+    def __random_errorz(self):
+        if randint(0, 50) % 49 == 0:
+            raise APIError()
+
 
 def with_rater(func):
     @functools.wraps(func)
