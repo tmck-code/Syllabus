@@ -1,3 +1,16 @@
+import json
+
+from collections import Counter
+
+from dataclasses import field, dataclass
+import sys
+from aiohttp import ClientResponseError
+import asyncio
+from itertools import count
+
+
+class Sentinel: pass
+
 class ThrottledQueue(asyncio.Queue):
     "subclass asyncio.Queue i.e. import all behaviour"
 
@@ -74,9 +87,6 @@ class AsyncRequester:
                 self.cntr["success"] += 1
 
 
-import asyncio
-from itertools import count
-
 async def _fill_queue(q, items):
     for idx, i in enumerate(items):
         await q.put((idx, i))
@@ -93,15 +103,6 @@ def unpack_queue(q):
     return asyncio.run(_unpack_queue(q))
 
 
-import json
-
-from collections import Counter
-
-from dataclasses import field, dataclass
-import sys
-from aiohttp import ClientResponseError
-
-class Sentinel: pass
 
 async def id_response_unpacker(req_data, resp, queue, *args):
     await queue.put((0, (resp,)))

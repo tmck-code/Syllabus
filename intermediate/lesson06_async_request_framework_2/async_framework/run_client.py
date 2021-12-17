@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 t = asyncio.run(_fill_queue(ThrottledQueue(per_second=1), [("get", "0.0.0.0", "8080", "items")]))
 t2 = ThrottledQueue(per_second=100)
