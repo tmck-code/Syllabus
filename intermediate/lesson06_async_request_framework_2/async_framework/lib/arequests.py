@@ -1,12 +1,11 @@
-import json
-
 from collections import Counter
-
 from dataclasses import field, dataclass
-import sys
-from aiohttp import ClientResponseError
-import asyncio
 from itertools import count
+import sys
+import time
+
+from aiohttp import ClientResponseError, request
+import asyncio
 
 
 class Sentinel: pass
@@ -61,6 +60,7 @@ class AsyncRequester:
     cntr: Counter = field(default_factory=Counter)
 
     async def consumer(self, idx):
+        print(f"Starting worker {idx}")
         retrying = False
         while True:
             if not retrying:
@@ -77,7 +77,7 @@ class AsyncRequester:
                     req.raise_for_status()
                 except ClientResponseError as e:
                     self.cntr["failure"] += 1
-                    await error_handler(e, q)
+                    await self.error_handler(e, q)
                     retrying = True
                     # TODO implement retry limit
                     continue
@@ -102,24 +102,3 @@ async def _unpack_queue(q):
 def unpack_queue(q):
     return asyncio.run(_unpack_queue(q))
 
-
-
-async def id_response_unpacker(req_data, resp, queue, *args):
-    await queue.put((0, (resp,)))
-
-async def base_response_unpacker(req_data, resp, queue):
-    for i in json.loads(resp):
-        await queue.put((0, (*req_data, i)))
-
-def id_request_builder(method, hostname, port, endpoint, i):
-    return (method, f"http://{hostname}:{port}/{endpoint}/{i}")
-
-def base_request_builder(method, hostname, port, endpoint):
-    return (method, f"http://{hostname}:{port}/{endpoint}")
-
-async def handle_error(e, q):
-    print(f"HANDLING ERROR: {e}")
-    if e.status == 429:
-        q.retry()
-    elif e.status == 503:
-        q.lock(10)
