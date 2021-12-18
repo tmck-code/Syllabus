@@ -148,7 +148,7 @@ class AsyncRequester:
 
 
 async def _fill_queue(q, items):
-    for idx, i in enumerate(items):
+    for i in items:
         await q.put(i)
     await q.put(Sentinel)
     return q
