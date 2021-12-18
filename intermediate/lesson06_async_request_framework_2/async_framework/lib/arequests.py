@@ -19,7 +19,7 @@ class ThrottledQueue(asyncio.Queue):
         self.lock = asyncio.Lock()
         self.i = i
         self.per_second = per_second
-        self.last_get = time.perf_counter_ns() # this is the fastest way... I think?
+        self.last_get = time.time() # this is the fastest way... I think?
         self.debug = debug
         super(ThrottledQueue, self).__init__(maxsize=maxsize, loop=loop)
 
@@ -36,7 +36,7 @@ class ThrottledQueue(asyncio.Queue):
             await self._throttle()
             result = await super(ThrottledQueue, self).get()
 
-            self.last_get = time.perf_counter_ns()
+            self.last_get = time.time()
             return result
 
     async def _throttle(self, override: int=0):
