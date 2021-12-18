@@ -34,6 +34,7 @@ class Rater:
         # Now, increment the total
         self.total += 1
         # If there are too many requests, raise error
+        print(self.total, self.max_requests)
         if self.total > self.max_requests:
             raise RateLimitError(
                 "Exceeded rate limit",
@@ -44,20 +45,26 @@ class Rater:
                 }
             )
         self.__random_errorz()
+
     def __random_errorz(self):
-        if randint(0, 50) % 49 == 0:
+        if randint(0, 100) % 49 == 0:
             raise APIError()
 
 
 def with_rater(func):
     @functools.wraps(func)
     async def wrapped(*args, **kwargs):
-        print(f"Request to '{func.__name__}': {args[1]}")
+        args[0].total += 1
+        print(f"Request {args[0].total} to '{func.__name__}': {args[1]}")
         try:
             args[0].rate_limit.inc()
         except RateLimitError as e:
             print(f"Rate limiting!", e.info)
             return web.Response(text=json.dumps({"error": e.info}), status=429)
+        except APIError as e:
+            print(f"API Error!", e.info)
+            return web.Response(text=json.dumps({"error": e.info}), status=503)
+
         return await func(*args, **kwargs)
     return wrapped
 
@@ -70,6 +77,7 @@ class API:
     def __post_init__(self):
         self.last_request = time.time()
         self.faker = Faker()
+        self.total = 0
         self.items = [self.faker.email() for _ in range(self.max_items)]
 
     @with_rater
@@ -105,4 +113,4 @@ class AServer:
         web.run_app(app)
 
 if __name__ == "__main__":
-    AServer(rate_limit=Rater(6_000, 60), max_items=1_000).run()
+    AServer(rate_limit=Rater(600, 60), max_items=1_000).run()

@@ -23,7 +23,7 @@ class ThrottledQueue(asyncio.Queue):
         self.debug = debug
         super(ThrottledQueue, self).__init__(maxsize=maxsize, loop=loop)
 
-    async def notify(self, override: int):
+    async def notify(self, override: int=0):
         """
         Signals to the queue that an item is being retried,
         so pause any get()s by aquiring the lock and throttling before releasing
@@ -41,6 +41,7 @@ class ThrottledQueue(asyncio.Queue):
 
     async def _throttle(self, override: int=0):
         if override > 0:
+            print(f"Throttling for override: {override}")
             await asyncio.sleep(override)
             return
         elapsed = time.time() - self.last_get
@@ -77,7 +78,7 @@ class AsyncRequester:
                     req.raise_for_status()
                 except ClientResponseError as e:
                     self.cntr["failure"] += 1
-                    await self.error_handler(e, q)
+                    await self.error_handler(e, self.in_q)
                     retrying = True
                     # TODO implement retry limit
                     continue

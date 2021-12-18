@@ -22,13 +22,13 @@ def base_request_builder(method, hostname, port, endpoint):
 async def handle_error(e, q):
     print(f"HANDLING ERROR: {e}")
     if e.status == 429:
-        q.retry()
+        await q.notify()
     elif e.status == 503:
-        q.lock(10)
+        await q.notify()
 
 async def main():
-    t = await _fill_queue(asyncio.Queue(), [("get", "0.0.0.0", "8080", "items")])
-    t2 = ThrottledQueue(per_second=100)
+    t = await _fill_queue(ThrottledQueue(per_second=1), [("get", "0.0.0.0", "8080", "items")])
+    t2 = ThrottledQueue(per_second=100, debug=True)
     res = asyncio.Queue()
 
     print(t, t2, res)
@@ -51,8 +51,8 @@ async def main():
     print("Running pipeline")
 
     await asyncio.gather(
-        all_customers_req.consumer(0),
         customers_by_id_req.consumer(0),
+        all_customers_req.consumer(0),
     )
 
 if __name__ == '__main__':

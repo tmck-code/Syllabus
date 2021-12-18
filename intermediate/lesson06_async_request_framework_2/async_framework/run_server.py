@@ -3,6 +3,6 @@
 from lib.aserver import AServer, Rater
 
 AServer(
-    rate_limit=Rater(6_000, 60),
-    max_items=1_000
+    rate_limit=Rater(600, 60),
+    max_items=1_000,
 ).run()
