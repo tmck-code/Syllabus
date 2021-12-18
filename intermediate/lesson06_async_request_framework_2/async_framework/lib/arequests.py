@@ -72,6 +72,7 @@ class AsyncRequester:
                     await self.out_q.put((i, Sentinel))
                     print(self.log_prefix, f"worker {idx} exiting")
                     return
+            retrying = False
             async with request(*self.req_builder(*d)) as req:
                 resp = await req.read()
                 try:

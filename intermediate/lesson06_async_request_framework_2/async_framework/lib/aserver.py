@@ -1,11 +1,11 @@
-from aiohttp import web
-
-import json
 from dataclasses import dataclass
-import time
 import functools
-from faker import Faker
+import json
 from random import randint
+import time
+
+from aiohttp import web
+from faker import Faker
 
 class APIError(Exception):
     def __init__(self, *args, info: dict = {}, **kwargs):
@@ -34,7 +34,6 @@ class Rater:
         # Now, increment the total
         self.total += 1
         # If there are too many requests, raise error
-        print(self.total, self.max_requests)
         if self.total > self.max_requests:
             raise RateLimitError(
                 "Exceeded rate limit",
@@ -111,6 +110,3 @@ class AServer:
         app = web.Application()
         app.add_routes(api.routes())
         web.run_app(app)
-
-if __name__ == "__main__":
-    AServer(rate_limit=Rater(600, 60), max_items=1_000).run()

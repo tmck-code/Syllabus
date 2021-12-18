@@ -3,7 +3,7 @@
 import asyncio
 import json
 
-from lib.arequests import _fill_queue, ThrottledQueue, AsyncRequester
+from lib.arequests import _fill_queue, ThrottledQueue, AsyncRequester, unpack_queue
 
 async def id_response_unpacker(req_data, resp, queue, *args):
     await queue.put((0, (resp,)))
@@ -28,7 +28,7 @@ async def handle_error(e, q):
 
 async def main():
     t = await _fill_queue(ThrottledQueue(per_second=1), [("get", "0.0.0.0", "8080", "items")])
-    t2 = ThrottledQueue(per_second=100, debug=True)
+    t2 = ThrottledQueue(per_second=10, debug=True)
     res = asyncio.Queue()
 
     print(t, t2, res)
@@ -54,6 +54,8 @@ async def main():
         customers_by_id_req.consumer(0),
         all_customers_req.consumer(0),
     )
+    return res
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    res = asyncio.run(main())
+    print(unpack_queue(res))
