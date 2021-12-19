@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from collections import abc
 from os import pipe
 from typing import List
+import time
 
 from lib.arequests import AsyncEndpointPipeline, AsyncEndpoint
 
@@ -25,7 +26,7 @@ class AllCustomers(AsyncEndpoint):
     async def error_handler(self, e, q):
         print(f"HANDLING ERROR: {e}")
         if e.status == 429:
-            await q.notify(5)
+            await q.notify_until(time.time()+5)
         elif e.status == 503:
             await q.notify()
 
@@ -42,15 +43,15 @@ class CustomerByID(AsyncEndpoint):
     async def error_handler(self, e, q):
         print(f"HANDLING ERROR: {e}")
         if e.status == 429:
-            await q.notify(5)
+            await q.notify_until(time.time()+5)
         elif e.status == 503:
-            await q.notify(2)
+            await q.notify()
 
 
 AsyncEndpointPipeline(
     endpoints=[
         AllCustomers(per_second=1),
-        CustomerByID(per_second=50),
+        CustomerByID(per_second=20, n_workers=20),
     ],
     initial=[
         ("get", "0.0.0.0", "8080", "items")

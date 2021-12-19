@@ -30,6 +30,7 @@ class Rater:
     def inc(self):
         # If we are over the time window, reset counter & time
         if (time.time() - self.start_time) > self.time_window:
+            print(f"Resetting rate limit counter & time, current: {self.total}")
             self.total = 0
             self.start_time = time.time()
         # Now, increment the total
