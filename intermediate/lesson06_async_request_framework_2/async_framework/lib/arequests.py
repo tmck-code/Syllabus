@@ -50,6 +50,7 @@ class ThrottledQueue(asyncio.Queue):
             print(self.i, '- times', f'{elapsed:.5f}', '+', f'{sleep_time:.5f}', '=', self.per_second, '- sizes', self.qsize(), f'{self.qsize() / max(1, self.maxsize):.5f}')
         await asyncio.sleep(max(0, sleep_time)) # Make sure we wait at least 0 seconds
 
+
 @dataclass
 class AsyncRequester:
     in_q: ThrottledQueue
@@ -65,14 +66,15 @@ class AsyncRequester:
         retrying = False
         while True:
             if not retrying:
-                i, d = await self.in_q.get()
+                d = await self.in_q.get()
                 print(self.log_prefix, d)
                 if d == Sentinel:
-                    await self.in_q.put((i, Sentinel))
-                    await self.out_q.put((i, Sentinel))
+                    await self.in_q.put(Sentinel)
+                    await self.out_q.put(Sentinel)
                     print(self.log_prefix, f"worker {idx} exiting")
                     return
             retrying = False
+            print("++++", self.req_builder, d)
             async with request(*self.req_builder(*d)) as req:
                 resp = await req.read()
                 try:
@@ -83,7 +85,7 @@ class AsyncRequester:
                     retrying = True
                     # TODO implement retry limit
                     continue
-                print(self.log_prefix, f"worker {idx} response for #{i}: {resp}")
+                print(self.log_prefix, f"worker {idx} response: {resp}")
                 print(self.log_prefix, f"sending to queue: {resp}")
                 await self.resp_unpacker(d, resp, self.out_q)
                 self.cntr["success"] += 1
@@ -91,8 +93,8 @@ class AsyncRequester:
 
 async def _fill_queue(q, items):
     for idx, i in enumerate(items):
-        await q.put((idx, i))
-    await q.put((idx, Sentinel))
+        await q.put(i)
+    await q.put(Sentinel)
     return q
 
 async def _unpack_queue(q):
