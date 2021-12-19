@@ -1,11 +1,11 @@
+from abc import ABC, abstractmethod, abstractproperty
+import asyncio
 from collections import Counter
 from dataclasses import field, dataclass
-from abc import ABC, abstractmethod
-from typing import List
 import time
+from typing import List
 
 from aiohttp import ClientResponseError, request
-import asyncio
 
 
 class Sentinel: pass
@@ -53,24 +53,24 @@ class ThrottledQueue(asyncio.Queue):
 @dataclass
 class AsyncEndpoint(ABC):
 
-    per_second: int
+    @abstractproperty
+    def per_second(self):
+        "The number of requests per second"
 
     def create_queue(self):
-        return ThrottledQueue(per_second=10, debug=True)
+        return ThrottledQueue(per_second=self.per_second, debug=True)
 
     @abstractmethod
-    async def response_unpacker(self, req_data, resp, queue, *args):
+    async def response_unpacker(req_data, resp, queue, *args):
         "Unpacks the response into individual items to put on a queue"
 
     @abstractmethod
-    def request_builder(self, method, hostname, port, endpoint, payload=None):
+    def request_builder(method, hostname, port, endpoint, payload=None):
         "Builds the *args and **kwargs to be passed to aiohttp.request()"
 
     @abstractmethod
-    async def error_handler(self, e, q):
+    async def error_handler(e, q):
         "Handles API errors"
-
-from dataclasses import field
 
 @dataclass
 class AsyncEndpointPipeline:
@@ -107,10 +107,12 @@ class AsyncEndpointPipeline:
     def run_pipeline(self):
         return asyncio.run(self.async_run_pipeline())
 
+
 @dataclass
 class AsyncRequester:
     in_q: ThrottledQueue
     out_q: ThrottledQueue
+    # TODO: each pipeline stage should only do 1 thing
     req_builder: object
     resp_unpacker: object
     error_handler: object
@@ -130,7 +132,6 @@ class AsyncRequester:
                     print(self.log_prefix, f"worker {idx} exiting")
                     return
             retrying = False
-            print("++++", self.req_builder, d)
             async with request(*self.req_builder(*d)) as req:
                 resp = await req.read()
                 try:
@@ -161,4 +162,3 @@ async def _unpack_queue(q):
 
 def unpack_queue(q):
     return asyncio.run(_unpack_queue(q))
-

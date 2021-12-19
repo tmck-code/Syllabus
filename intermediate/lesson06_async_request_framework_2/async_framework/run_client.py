@@ -14,6 +14,10 @@ from lib.arequests import AsyncEndpointPipeline, AsyncEndpoint
 @dataclass
 class AllCustomers(AsyncEndpoint):
 
+    @property
+    def per_second(self):
+        return 1
+
     async def response_unpacker(self, req_data, resp, queue):
         for i in json.loads(resp):
             print("+++", *req_data, i)
@@ -32,6 +36,11 @@ class AllCustomers(AsyncEndpoint):
 
 @dataclass
 class CustomerByID(AsyncEndpoint):
+
+    @property
+    def per_second(self):
+        return 50
+
     async def response_unpacker(self, req_data, resp, queue):
         await queue.put(resp,)
 
@@ -48,8 +57,8 @@ class CustomerByID(AsyncEndpoint):
 
 AsyncEndpointPipeline(
     endpoints=[
-        AllCustomers(per_second=1),
-        CustomerByID(per_second=10)
+        AllCustomers(),
+        CustomerByID(),
     ],
     initial=[
         ("get", "0.0.0.0", "8080", "items")
