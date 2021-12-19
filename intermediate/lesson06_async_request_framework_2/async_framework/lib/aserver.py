@@ -65,7 +65,7 @@ def with_rater(func):
             print(f"API Error!", e.info)
             return web.Response(text=json.dumps({"error": e.info}), status=503)
 
-        await asyncio.sleep(random.uniform(0, 1))
+        await asyncio.sleep(random.uniform(1, 3))
 
         return await func(*args, **kwargs)
     return wrapped

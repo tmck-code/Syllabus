@@ -17,6 +17,7 @@ class ThrottledQueue(asyncio.Queue):
         "Set up some extra vars and then call the original init"
 
         self.lock = asyncio.Lock()
+        self.emergency_lock = asyncio.Lock()
         self.i = i
         self.per_second = per_second
         self.last_get = time.time() # this is the fastest way... I think?
@@ -26,18 +27,19 @@ class ThrottledQueue(asyncio.Queue):
     async def notify(self, override: int=0):
         """
         Signals to the queue that an item is being retried,
-        so pause any get()s by aquiring the lock and throttling before releasing
+        so pause any get()s by aquiring a lock and throttling before releasing
         """
-        async with self.lock:
+        async with self.emergency_lock:
             await self._throttle(override)
 
     async def get(self):
         async with self.lock:
-            await self._throttle()
-            result = await super(ThrottledQueue, self).get()
+            async with self.emergency_lock:
+                await self._throttle()
+                result = await super(ThrottledQueue, self).get()
 
-            self.last_get = time.time()
-            return result
+                self.last_get = time.time()
+                return result
 
     async def _throttle(self, override: int=0):
         if override > 0:
@@ -125,7 +127,6 @@ class AsyncRequester:
         while True:
             if not retrying:
                 d = await self.in_q.get()
-                print(self.log_prefix, d)
                 if d == Sentinel:
                     await self.in_q.put(Sentinel)
                     await self.out_q.put(Sentinel)
