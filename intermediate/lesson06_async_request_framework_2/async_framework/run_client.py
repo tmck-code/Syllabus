@@ -29,7 +29,7 @@ class AllCustomers(AsyncEndpoint):
     async def error_handler(self, e, q):
         print(f"HANDLING ERROR: {e}")
         if e.status == 429:
-            await q.notify()
+            await q.notify(5)
         elif e.status == 503:
             await q.notify()
 
@@ -50,9 +50,9 @@ class CustomerByID(AsyncEndpoint):
     async def error_handler(self, e, q):
         print(f"HANDLING ERROR: {e}")
         if e.status == 429:
-            await q.notify()
+            await q.notify(5)
         elif e.status == 503:
-            await q.notify()
+            await q.notify(10)
 
 
 AsyncEndpointPipeline(
