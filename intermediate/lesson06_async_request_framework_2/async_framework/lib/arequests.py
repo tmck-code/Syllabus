@@ -1,7 +1,7 @@
 from collections import Counter
 from dataclasses import field, dataclass
-from itertools import count
-import sys
+from abc import ABC, abstractmethod
+from typing import List
 import time
 
 from aiohttp import ClientResponseError, request
@@ -50,6 +50,62 @@ class ThrottledQueue(asyncio.Queue):
             print(self.i, '- times', f'{elapsed:.5f}', '+', f'{sleep_time:.5f}', '=', self.per_second, '- sizes', self.qsize(), f'{self.qsize() / max(1, self.maxsize):.5f}')
         await asyncio.sleep(max(0, sleep_time)) # Make sure we wait at least 0 seconds
 
+@dataclass
+class AsyncEndpoint(ABC):
+
+    per_second: int
+
+    def create_queue(self):
+        return ThrottledQueue(per_second=10, debug=True)
+
+    @abstractmethod
+    async def response_unpacker(self, req_data, resp, queue, *args):
+        "Unpacks the response into individual items to put on a queue"
+
+    @abstractmethod
+    def request_builder(self, method, hostname, port, endpoint, payload=None):
+        "Builds the *args and **kwargs to be passed to aiohttp.request()"
+
+    @abstractmethod
+    async def error_handler(self, e, q):
+        "Handles API errors"
+
+from dataclasses import field
+
+@dataclass
+class AsyncEndpointPipeline:
+    endpoints: List[AsyncEndpoint]
+    initial: List[tuple]
+
+    async def async_run_pipeline(self):
+        pipeline = []
+        in_q, out_q = None, None
+        results = asyncio.Queue()
+
+        for i, e in enumerate(self.endpoints):
+            if i == 0:
+                in_q = await _fill_queue(ThrottledQueue(per_second=e.per_second), self.initial)
+            if i == len(self.endpoints)-1:
+                out_q = results
+            else:
+                out_q = ThrottledQueue(per_second=self.endpoints[i+1].per_second)
+            a = AsyncRequester(
+                in_q=in_q,
+                out_q=out_q,
+                req_builder=e.request_builder,
+                resp_unpacker=e.response_unpacker,
+                error_handler=e.error_handler,
+            ).consumer(i)
+            pipeline.append(a)
+            in_q = out_q
+
+        await asyncio.gather(
+            *pipeline
+        )
+        return results
+    
+    def run_pipeline(self):
+        return asyncio.run(self.async_run_pipeline())
 
 @dataclass
 class AsyncRequester:
