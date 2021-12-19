@@ -23,6 +23,7 @@ class ThrottledQueue(asyncio.Queue):
         self.per_second = per_second
         self.last_get = time.time() # this is the fastest way... I think?
         self.debug = debug
+        self.n_consumers = 0
         super(ThrottledQueue, self).__init__(maxsize=maxsize, loop=loop)
 
     async def notify(self, override: int=0):
@@ -39,6 +40,12 @@ class ThrottledQueue(asyncio.Queue):
         async with self.emergency_lock:
             await self._throttle(override)
 
+    def inc_consumer(self):
+        self.n_consumers += 1
+
+    def dec_consumer(self):
+        self.n_consumers -= 1
+
     async def notify_until(self, until: int):
         async with self.emergency_lock:
             override = until-time.time()
@@ -48,7 +55,7 @@ class ThrottledQueue(asyncio.Queue):
                 print("SKIPPING")
 
     async def get(self):
-        # If there are 
+        # If there are
         async with self.lock:
             async with self.emergency_lock:
                 pass
@@ -60,7 +67,7 @@ class ThrottledQueue(asyncio.Queue):
 
     async def _throttle(self, override: int=0):
         if override > 0:
-            print(f"Throttling for override: {override}", flush=True)
+            print(f"Throttling for override: {override}")
             await asyncio.sleep(override)
             return
         elapsed = time.time() - self.last_get
@@ -109,7 +116,6 @@ class AsyncEndpointPipeline:
                 out_q = ThrottledQueue(per_second=self.endpoints[i+1].per_second)
 
             # TODO: how many workers is actually a reasonable amount to create?
-            # for j in range(e.per_second):
             for j in range(e.n_workers):
                 a = AsyncRequester(
                     in_q=in_q,
@@ -118,12 +124,13 @@ class AsyncEndpointPipeline:
                     resp_unpacker=e.response_unpacker,
                     error_handler=e.error_handler,
                 ).consumer(j)
+                in_q.inc_consumer()
                 pipeline.append(a)
             in_q = out_q
 
         await asyncio.gather(*pipeline)
 
-    def run_pipeline(self):
+    def run(self):
         return asyncio.run(self.async_run_pipeline())
 
 
@@ -145,30 +152,32 @@ class AsyncRequester:
             if not retrying:
                 d = await self.in_q.get()
                 if d == Sentinel:
+                    self.in_q.dec_consumer()
                     await self.in_q.put(Sentinel)
-                    await self.out_q.put(Sentinel)
-                    print(self.log_prefix, f"worker {idx}", "exiting", flush=True)
+                    if self.in_q.n_consumers == 0:
+                        await self.out_q.put(Sentinel)
+                    print(self.log_prefix, f"worker {idx}", "exiting")
                     return
             retrying = False
             await asyncio.sleep(0)
             # TODO: put this aiottp.request stuff into the subclasses when separating the req_builder/resp_unpacker stuff
+            t1 = time.time()
             async with request(*self.req_builder(*d)) as req:
-                print(self.log_prefix, f"worker {idx}", f"requesting {d}", flush=True)
+                # print(self.log_prefix, f"worker {idx}", f"requesting {d}")
                 resp = await req.read()
                 try:
                     req.raise_for_status()
                 except ClientResponseError as e:
-                    print(f"Failure!! {e}", flush=True)
+                    print(f"Failure!! {e}")
                     self.cntr["failure"] += 1
                     await self.error_handler(e, self.in_q)
                     retrying = True
                     # TODO implement retry limit
                     continue
                 await asyncio.sleep(0)
-                print(self.log_prefix, f"worker {idx}", f"response: {resp}", flush=True)
-                await asyncio.sleep(0)
                 await self.resp_unpacker(d, resp, self.out_q)
                 self.cntr["success"] += 1
+            print(self.log_prefix, f"worker {idx}", "elapsed", time.time()-t1, f"response: {resp}")
 
 
 async def _fill_queue(q, items):

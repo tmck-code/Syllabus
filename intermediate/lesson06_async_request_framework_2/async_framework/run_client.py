@@ -9,7 +9,7 @@ from os import pipe
 from typing import List
 import time
 
-from lib.arequests import AsyncEndpointPipeline, AsyncEndpoint
+from lib.arequests import AsyncEndpointPipeline, AsyncEndpoint, unpack_queue
 
 
 @dataclass
@@ -48,12 +48,18 @@ class CustomerByID(AsyncEndpoint):
             await q.notify()
 
 
-AsyncEndpointPipeline(
+pipeline = AsyncEndpointPipeline(
     endpoints=[
         AllCustomers(per_second=1),
-        CustomerByID(per_second=20, n_workers=20),
+        CustomerByID(per_second=20, n_workers=40),
     ],
     initial=[
         ("get", "0.0.0.0", "8080", "items")
     ]
-).run_pipeline()
+)
+pipeline.run()
+results = unpack_queue(pipeline.results)
+
+for r in results:
+    print(r)
+print(len(results))
