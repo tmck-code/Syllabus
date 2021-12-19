@@ -1,7 +1,8 @@
+import asyncio
 from dataclasses import dataclass
 import functools
 import json
-from random import randint
+import random
 import time
 
 from aiohttp import web
@@ -46,7 +47,7 @@ class Rater:
         self.__random_errorz()
 
     def __random_errorz(self):
-        if randint(0, 100) % 49 == 0:
+        if random.randint(0, 100) % 49 == 0:
             raise APIError()
 
 
@@ -63,6 +64,8 @@ def with_rater(func):
         except APIError as e:
             print(f"API Error!", e.info)
             return web.Response(text=json.dumps({"error": e.info}), status=503)
+
+        await asyncio.sleep(random.uniform(0, 1))
 
         return await func(*args, **kwargs)
     return wrapped

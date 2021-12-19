@@ -53,9 +53,7 @@ class ThrottledQueue(asyncio.Queue):
 @dataclass
 class AsyncEndpoint(ABC):
 
-    @abstractproperty
-    def per_second(self):
-        "The number of requests per second"
+    per_second: int
 
     def create_queue(self):
         return ThrottledQueue(per_second=self.per_second, debug=True)
@@ -89,21 +87,23 @@ class AsyncEndpointPipeline:
                 out_q = results
             else:
                 out_q = ThrottledQueue(per_second=self.endpoints[i+1].per_second)
-            a = AsyncRequester(
-                in_q=in_q,
-                out_q=out_q,
-                req_builder=e.request_builder,
-                resp_unpacker=e.response_unpacker,
-                error_handler=e.error_handler,
-            ).consumer(i)
-            pipeline.append(a)
+
+            for j in range(e.per_second):
+                a = AsyncRequester(
+                    in_q=in_q,
+                    out_q=out_q,
+                    req_builder=e.request_builder,
+                    resp_unpacker=e.response_unpacker,
+                    error_handler=e.error_handler,
+                ).consumer(j)
+                pipeline.append(a)
             in_q = out_q
 
         await asyncio.gather(
             *pipeline
         )
         return results
-    
+
     def run_pipeline(self):
         return asyncio.run(self.async_run_pipeline())
 
@@ -129,21 +129,25 @@ class AsyncRequester:
                 if d == Sentinel:
                     await self.in_q.put(Sentinel)
                     await self.out_q.put(Sentinel)
-                    print(self.log_prefix, f"worker {idx} exiting")
+                    print(self.log_prefix, f"worker {idx}", "exiting")
                     return
             retrying = False
             async with request(*self.req_builder(*d)) as req:
+                print(self.log_prefix, f"worker {idx}", f"requesting {d}")
                 resp = await req.read()
                 try:
                     req.raise_for_status()
                 except ClientResponseError as e:
+                    print(f"Failure!! {e}")
                     self.cntr["failure"] += 1
                     await self.error_handler(e, self.in_q)
                     retrying = True
                     # TODO implement retry limit
                     continue
-                print(self.log_prefix, f"worker {idx} response: {resp}")
-                print(self.log_prefix, f"sending to queue: {resp}")
+                print(self.log_prefix, f"worker {idx}", f"response: {resp}")
+                await asyncio.sleep(0)
+
+                print(self.log_prefix, f"worker {idx}", f"sending to queue: {resp}")
                 await self.resp_unpacker(d, resp, self.out_q)
                 self.cntr["success"] += 1
 
