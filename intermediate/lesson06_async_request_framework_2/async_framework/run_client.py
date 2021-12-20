@@ -4,14 +4,14 @@ import asyncio
 import json
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from collections import abc
-from os import pipe
-from typing import List
 import time
 import random
 
-from lib.arequests import AsyncEndpointPipeline, AsyncEndpoint, ThrottledQueue, unpack_queue, Sentinel
+from lib.arequests import ThrottledQueue, Sentinel, _fill_queue, unpack_queue
 from abc import abstractmethod
+from aiohttp import request, ClientResponseError
+
+
 @dataclass
 class Unpacker:
     "gets QueueItems from an asyncio.Queue, unpacks to another QueueItem, puts on a ThrottledQueue"
@@ -23,11 +23,25 @@ class Unpacker:
     async def unpack(self, d: object) -> object:
         "Unpacks a queue object/transforms it for a ThrottledWorker"
 
+    @abstractmethod
+    async def handle_error(self, e):
+        "Handles an error"
+
     async def run(self):
+        print("Unpacker", self.__class__.__name__, "starting")
         while True:
             d = await self.in_q.get()
-            for el in self.unpack(d):
-                await self.out_q.put(el)
+            if d == Sentinel:
+                print("Unpacker", self.__class__.__name__, "exiting")
+                await self.in_q.put(Sentinel)
+                await self.out_q.put(Sentinel)
+                return
+            try:
+                for el in await self.unpack(d):
+                    print("unpacked", el)
+                    await self.out_q.put(el)
+            except Exception as e:
+                await self.handle_error(self, e)
 
 
 @dataclass
@@ -41,62 +55,99 @@ class ThrottledWorker:
     async def work(self, d):
         "Does some work on a QueueItem and returns the result"
 
+    @abstractmethod
+    async def handle_error(self, e):
+        "Handles an error"
+
     async def run(self):
+        print("ThrottledWorker", self.__class__.__name__, "starting")
+        retrying = False
         while True:
-            d = await self.in_q.get()
-            resp = await self.work(d)
-            await self.out_q.put(d)
+            if not retrying:
+                d = await self.in_q.get()
+                print("ThrottledWorker get()", d)
+                if d == Sentinel:
+                    print("ThrottledWorker", self.__class__.__name__, "exiting")
+                    await self.in_q.put(Sentinel)
+                    self.in_q.dec_consumer()
+                    if self.in_q.n_consumers == 0:
+                        await self.out_q.put(Sentinel)
+                    return
+            try:
+                resp = await self.work(d)
+            except Exception as e:
+                await self.handle_error(e)
+                retrying = True
+                continue
+            print("putting on queue", resp)
+            await self.out_q.put(resp)
+            retrying = False
 
+from collections import namedtuple
+
+AllCustomersQueueItem = namedtuple("all_customers_queue_item", ["method", "hostname", "port", "endpoint"])
+CustomerByIDQueueItem = namedtuple("customers_by_id_queue_item", ["method", "hostname", "port", "endpoint", "id"])
 
 @dataclass
-class AllCustomers(AsyncEndpoint):
+class AllCustomersWorker(ThrottledWorker):
 
-    async def response_unpacker(self, req_data, resp):
-        print("+++", *req_data, resp)
-        return [(*req_data, i) for i in json.loads(resp)]
+    async def work(self, d: AllCustomersQueueItem):
+        async with request(d.method, f"http://{d.hostname}:{d.port}/{d.endpoint}") as req:
+            resp = await req.read()
+            req.raise_for_status()
+            print(resp)
+            return resp
 
-    def request_builder(self, method, hostname, port, endpoint, *args):
-        return (method, f"http://{hostname}:{port}/{endpoint}")
-
-    async def error_handler(self, e, q):
-        print(f"HANDLING ERROR: {e}")
-        if e.status == 429:
-            await q.notify_until(time.time()+random.randint(3, 7))
-        elif e.status == 503:
-            await q.notify()
-
+    async def handle_error(self, e):
+        print(f"HANDLING ERROR: {self.__class__.__name__}, {e}")
+        if isinstance(e, ClientResponseError):
+            if e.status == 429:
+                await self.in_q.notify_until(time.time()+random.randint(3, 7))
+            elif e.status == 503:
+                await self.in_q.notify()
 
 @dataclass
-class CustomerByID(AsyncEndpoint):
+class AllCustomersUnpacker(Unpacker):
 
-    async def response_unpacker(self, req_data, resp):
-        return [(resp,)]
+    base: AllCustomersQueueItem
+    
+    async def unpack(self, d) -> CustomerByIDQueueItem:
+        print(d)
+        return [CustomerByIDQueueItem(*tuple(self.base), i) for i in json.loads(d)]
 
-    def request_builder(self, method, hostname, port, endpoint, i):
-        return (method, f"http://{hostname}:{port}/{endpoint}/{i}")
+@dataclass
+class CustomerByIDWorker(ThrottledWorker):
 
-    async def error_handler(self, e, q):
-        print(f"HANDLING ERROR: {e}")
-        if e.status == 429:
-            await q.notify_until(time.time()+random.randint(3, 7))
-        elif e.status == 503:
-            await q.notify()
+    async def work(self, d: CustomerByIDQueueItem):
+        async with request(d.method, f"http://{d.hostname}:{d.port}/{d.endpoint}/{d.id}") as req:
+            resp = await req.read()
+            req.raise_for_status()  
+            return resp
 
+    async def handle_error(self, e):
+        print(f"HANDLING ERROR: {self.__class__.__name__}, {e}")
+        if isinstance(e, ClientResponseError):
+            if e.status == 429:
+                await self.in_q.notify_until(time.time()+random.randint(3, 7))
+            elif e.status == 503:
+                await self.in_q.notify()
 
-pipeline = AsyncEndpointPipeline(
-    endpoints=[
-        AllCustomers(per_second=1),
-        CustomerByID(per_second=20, n_workers=40),
-    ],
-    initial=[
-        ("get", "0.0.0.0", "8080", "items")
-    ]
-)
-pipeline.run()
-results = unpack_queue(pipeline.results)
+async def run_pipeline():
+    all_customers_q = await _fill_queue(ThrottledQueue(per_second=1), [AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")])
+    all_customers_q.inc_consumer()
+    customers_by_id_q = ThrottledQueue(per_second=20)
+    t, results = asyncio.Queue(), asyncio.Queue()
 
-for r in results:
-    if r == Sentinel:
-        continue
-    print(r[0].decode())
-print(len(results))
+    await asyncio.gather(
+        AllCustomersWorker(in_q=all_customers_q, out_q=t).run(),
+        AllCustomersUnpacker(in_q=t, out_q=customers_by_id_q, base=AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")).run(),
+        *[CustomerByIDWorker(in_q=customers_by_id_q, out_q=results).run() for _ in range(40)],
+    )
+    for _ in range(40):
+        customers_by_id_q.inc_consumer()
+    return results
+
+res = asyncio.run(run_pipeline())
+l = unpack_queue(res)
+
+print(l, len(l))
