@@ -8,8 +8,9 @@ from collections import abc
 from os import pipe
 from typing import List
 import time
+import random
 
-from lib.arequests import AsyncEndpointPipeline, AsyncEndpoint, unpack_queue
+from lib.arequests import AsyncEndpointPipeline, AsyncEndpoint, unpack_queue, Sentinel
 
 
 @dataclass
@@ -26,7 +27,7 @@ class AllCustomers(AsyncEndpoint):
     async def error_handler(self, e, q):
         print(f"HANDLING ERROR: {e}")
         if e.status == 429:
-            await q.notify_until(time.time()+5)
+            await q.notify_until(time.time()+random.randint(3, 7))
         elif e.status == 503:
             await q.notify()
 
@@ -43,7 +44,7 @@ class CustomerByID(AsyncEndpoint):
     async def error_handler(self, e, q):
         print(f"HANDLING ERROR: {e}")
         if e.status == 429:
-            await q.notify_until(time.time()+5)
+            await q.notify_until(time.time()+random.randint(3, 7))
         elif e.status == 503:
             await q.notify()
 
@@ -61,5 +62,7 @@ pipeline.run()
 results = unpack_queue(pipeline.results)
 
 for r in results:
-    print(r)
+    if r == Sentinel:
+        continue
+    print(r.decode())
 print(len(results))

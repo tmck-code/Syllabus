@@ -174,7 +174,6 @@ class AsyncRequester:
                     retrying = True
                     # TODO implement retry limit
                     continue
-                await asyncio.sleep(0)
                 await self.resp_unpacker(d, resp, self.out_q)
                 self.cntr["success"] += 1
             print(self.log_prefix, f"worker {idx}", "elapsed", time.time()-t1, f"response: {resp}")
