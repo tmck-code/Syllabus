@@ -86,7 +86,7 @@ class AsyncEndpoint(ABC):
         return ThrottledQueue(per_second=self.per_second, debug=debug)
 
     @abstractmethod
-    async def response_unpacker(req_data, resp, queue, *args):
+    async def response_unpacker(req_data, resp, *args):
         "Unpacks the response into individual items to put on a queue"
 
     @abstractmethod
@@ -174,7 +174,9 @@ class AsyncRequester:
                     retrying = True
                     # TODO implement retry limit
                     continue
-                await self.resp_unpacker(d, resp, self.out_q)
+                result = await self.resp_unpacker(d, resp)
+                for r in result:
+                    await self.out_q.put(r)
                 self.cntr["success"] += 1
             print(self.log_prefix, f"worker {idx}", "elapsed", time.time()-t1, f"response: {resp}")
 

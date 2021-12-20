@@ -16,10 +16,9 @@ from lib.arequests import AsyncEndpointPipeline, AsyncEndpoint, unpack_queue, Se
 @dataclass
 class AllCustomers(AsyncEndpoint):
 
-    async def response_unpacker(self, req_data, resp, queue):
-        for i in json.loads(resp):
-            print("+++", *req_data, i)
-            await queue.put((*req_data, i))
+    async def response_unpacker(self, req_data, resp):
+        print("+++", *req_data, resp)
+        return [(*req_data, i) for i in json.loads(resp)]
 
     def request_builder(self, method, hostname, port, endpoint, *args):
         return (method, f"http://{hostname}:{port}/{endpoint}")
@@ -35,8 +34,8 @@ class AllCustomers(AsyncEndpoint):
 @dataclass
 class CustomerByID(AsyncEndpoint):
 
-    async def response_unpacker(self, req_data, resp, queue):
-        await queue.put(resp,)
+    async def response_unpacker(self, req_data, resp):
+        return [(resp,)]
 
     def request_builder(self, method, hostname, port, endpoint, i):
         return (method, f"http://{hostname}:{port}/{endpoint}/{i}")
@@ -64,5 +63,5 @@ results = unpack_queue(pipeline.results)
 for r in results:
     if r == Sentinel:
         continue
-    print(r.decode())
+    print(r[0].decode())
 print(len(results))
