@@ -16,6 +16,7 @@ from aiohttp import request, ClientResponseError
 class Unpacker:
     "gets QueueItems from an asyncio.Queue, unpacks to another QueueItem, puts on a ThrottledQueue"
 
+    key: str
     in_q: asyncio.Queue
     out_q: ThrottledQueue
 
@@ -27,18 +28,21 @@ class Unpacker:
     async def handle_error(self, e):
         "Handles an error"
 
+    def log(self, body: dict):
+        print(json.dumps({self.__class__.__name__: self.key, **body}))
+
     async def run(self):
-        print("Unpacker", self.__class__.__name__, "starting")
+        self.log({"state": "starting"})
         while True:
             d = await self.in_q.get()
             if d == Sentinel:
-                print("Unpacker", self.__class__.__name__, "exiting")
+                self.log({"state": "exiting"})
                 await self.in_q.put(Sentinel)
                 await self.out_q.put(Sentinel)
                 return
             try:
                 for el in await self.unpack(d):
-                    print("unpacked", el)
+                    self.log({"unpacked": el})
                     await self.out_q.put(el)
             except Exception as e:
                 await self.handle_error(self, e)
@@ -48,8 +52,12 @@ class Unpacker:
 class ThrottledWorker:
     "gets QueueItems from a ThrottledQueue, builds into a requests, awaits response and puts on a asyncio.Queue"
 
+    key: str
     in_q: ThrottledQueue
     out_q: asyncio.Queue
+
+    def __post_init__(self):
+        self.in_q.inc_consumer()
 
     @abstractmethod
     async def work(self, d):
@@ -58,30 +66,64 @@ class ThrottledWorker:
     @abstractmethod
     async def handle_error(self, e):
         "Handles an error"
+    
+    def log(self, body: dict):
+        print(json.dumps({self.__class__.__name__: self.key, **body}))
 
     async def run(self):
-        print("ThrottledWorker", self.__class__.__name__, "starting")
+        self.log({"state": "starting"})
         retrying = False
         while True:
             if not retrying:
                 d = await self.in_q.get()
-                print("ThrottledWorker get()", d)
+                self.log({"get()": str(d)})
                 if d == Sentinel:
-                    print("ThrottledWorker", self.__class__.__name__, "exiting")
+                    self.log({"state": "exiting", "remaining": self.in_q.n_consumers})
                     await self.in_q.put(Sentinel)
                     self.in_q.dec_consumer()
                     if self.in_q.n_consumers == 0:
                         await self.out_q.put(Sentinel)
                     return
+            t = time.time()
             try:
                 resp = await self.work(d)
             except Exception as e:
                 await self.handle_error(e)
                 retrying = True
                 continue
-            print("putting on queue", resp)
+            self.log({"req": d, "duration": time.time()-t})
             await self.out_q.put(resp)
             retrying = False
+
+
+@dataclass
+class Finisher:
+    """
+    Takes items from an asyncio.Queue and transfers to the synchronous work
+    e.g. printing to stdout, collecting to a list, writing to file etc.
+    """
+
+    in_q: asyncio.Queue
+
+    @abstractmethod
+    async def run(self):
+        "Awaits each item in the queue and puts it somewhere"
+
+import sys
+
+@dataclass
+class PrintFinisher(Finisher):
+
+    stream: object = sys.stderr
+
+    async def run(self):
+        while True:
+            d = await self.in_q.get()
+            if d == Sentinel:
+                await self.in_q.put(Sentinel)
+                return
+            print(d.decode(), file=self.stream)
+
 
 from collections import namedtuple
 
@@ -95,11 +137,10 @@ class AllCustomersWorker(ThrottledWorker):
         async with request(d.method, f"http://{d.hostname}:{d.port}/{d.endpoint}") as req:
             resp = await req.read()
             req.raise_for_status()
-            print(resp)
             return resp
 
     async def handle_error(self, e):
-        print(f"HANDLING ERROR: {self.__class__.__name__}, {e}")
+        self.log({"error": str(e)})
         if isinstance(e, ClientResponseError):
             if e.status == 429:
                 await self.in_q.notify_until(time.time()+random.randint(3, 7))
@@ -112,7 +153,6 @@ class AllCustomersUnpacker(Unpacker):
     base: AllCustomersQueueItem
     
     async def unpack(self, d) -> CustomerByIDQueueItem:
-        print(d)
         return [CustomerByIDQueueItem(*tuple(self.base), i) for i in json.loads(d)]
 
 @dataclass
@@ -125,7 +165,7 @@ class CustomerByIDWorker(ThrottledWorker):
             return resp
 
     async def handle_error(self, e):
-        print(f"HANDLING ERROR: {self.__class__.__name__}, {e}")
+        self.log({"error": str(e)})
         if isinstance(e, ClientResponseError):
             if e.status == 429:
                 await self.in_q.notify_until(time.time()+random.randint(3, 7))
@@ -134,20 +174,16 @@ class CustomerByIDWorker(ThrottledWorker):
 
 async def run_pipeline():
     all_customers_q = await _fill_queue(ThrottledQueue(per_second=1), [AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")])
-    all_customers_q.inc_consumer()
     customers_by_id_q = ThrottledQueue(per_second=20)
     t, results = asyncio.Queue(), asyncio.Queue()
 
     await asyncio.gather(
-        AllCustomersWorker(in_q=all_customers_q, out_q=t).run(),
-        AllCustomersUnpacker(in_q=t, out_q=customers_by_id_q, base=AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")).run(),
-        *[CustomerByIDWorker(in_q=customers_by_id_q, out_q=results).run() for _ in range(40)],
+        AllCustomersWorker(key="0", in_q=all_customers_q, out_q=t).run(),
+        AllCustomersUnpacker(key="0", in_q=t, out_q=customers_by_id_q, base=AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")).run(),
+        *[CustomerByIDWorker(key=str(i), in_q=customers_by_id_q, out_q=results).run() for i in range(40)],
+        PrintFinisher(in_q=results).run(),
     )
-    for _ in range(40):
-        customers_by_id_q.inc_consumer()
+
     return results
 
-res = asyncio.run(run_pipeline())
-l = unpack_queue(res)
-
-print(l, len(l))
+asyncio.run(run_pipeline())
