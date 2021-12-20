@@ -76,9 +76,8 @@ class ThrottledWorker:
         while True:
             if not retrying:
                 d = await self.in_q.get()
-                self.log({"get()": str(d)})
                 if d == Sentinel:
-                    self.log({"state": "exiting", "remaining": self.in_q.n_consumers})
+                    self.log({"state": "exiting", "remaining": self.in_q.n_consumers-1})
                     await self.in_q.put(Sentinel)
                     self.in_q.dec_consumer()
                     if self.in_q.n_consumers == 0:
