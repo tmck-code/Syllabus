@@ -14,7 +14,7 @@ class Sentinel: pass
 class ThrottledQueue(asyncio.Queue):
     "subclass asyncio.Queue i.e. import all behaviour"
 
-    def __init__(self, per_second, debug=False, maxsize=0, *, loop=None, i=0):
+    def __init__(self, per_second, debug=False, maxsize=0, *, i=0):
         "Set up some extra vars and then call the original init"
 
         self.lock = asyncio.Lock()
@@ -24,7 +24,7 @@ class ThrottledQueue(asyncio.Queue):
         self.last_get = time.time() # this is the fastest way... I think?
         self.debug = debug
         self.n_consumers = 0
-        super(ThrottledQueue, self).__init__(maxsize=maxsize, loop=loop)
+        super(ThrottledQueue, self).__init__(maxsize=maxsize)
 
     async def notify(self, override: int=0):
         """
