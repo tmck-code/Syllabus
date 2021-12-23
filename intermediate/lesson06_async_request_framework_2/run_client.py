@@ -6,8 +6,9 @@ from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import time
 import random
+from collections import namedtuple
 
-from lib.arequests import ThrottledQueue, Sentinel, _fill_queue, unpack_queue
+from aframe.arequests import ThrottledQueue, Sentinel, _fill_queue
 from abc import abstractmethod
 from aiohttp import request, ClientResponseError
 
@@ -21,7 +22,7 @@ class Unpacker:
     out_q: ThrottledQueue
 
     @abstractmethod
-    async def unpack(self, d: object) -> object:
+    async def unpack(self, d: namedtuple) -> namedtuple:
         "Unpacks a queue object/transforms it for a ThrottledWorker"
 
     @abstractmethod
@@ -38,7 +39,8 @@ class Unpacker:
             if d == Sentinel:
                 self.log({"state": "exiting"})
                 await self.in_q.put(Sentinel)
-                await self.out_q.put(Sentinel)
+                await self.out_q.put(Sentinel) # there will only ever be 1 unpacker per stage, so it's safe to
+                                               # just put a sentinel on the out_q
                 return
             try:
                 for el in await self.unpack(d):
@@ -66,7 +68,7 @@ class ThrottledWorker:
     @abstractmethod
     async def handle_error(self, e):
         "Handles an error"
-    
+
     def log(self, body: dict):
         print(json.dumps({self.__class__.__name__: self.key, **body}))
 
@@ -150,7 +152,7 @@ class AllCustomersWorker(ThrottledWorker):
 class AllCustomersUnpacker(Unpacker):
 
     base: AllCustomersQueueItem
-    
+
     async def unpack(self, d) -> CustomerByIDQueueItem:
         return [CustomerByIDQueueItem(*tuple(self.base), i) for i in json.loads(d)]
 
@@ -160,7 +162,7 @@ class CustomerByIDWorker(ThrottledWorker):
     async def work(self, d: CustomerByIDQueueItem):
         async with request(d.method, f"http://{d.hostname}:{d.port}/{d.endpoint}/{d.id}") as req:
             resp = await req.read()
-            req.raise_for_status()  
+            req.raise_for_status()
             return resp
 
     async def handle_error(self, e):

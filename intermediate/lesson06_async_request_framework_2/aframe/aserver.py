@@ -9,10 +9,12 @@ from aiohttp import web
 from faker import Faker
 
 class APIError(Exception):
-    def __init__(self, *args, info: dict = {}, **kwargs):
+    def __init__(self, *args, status_code, info: dict = {}, **kwargs):
         self.info = info
+        self.status_code = status_code
         super().__init__(*args, **kwargs)
 
+class NotFound(APIError): pass
 class RateLimitError(APIError): pass
 
 @dataclass
@@ -43,13 +45,18 @@ class Rater:
                     "limit": self.max_requests,
                     "current": self.total,
                     "remaining": self.__time_remaining()
-                }
+                },
+                status_code=429
             )
         self.__random_errorz()
 
     def __random_errorz(self):
         if random.randint(0, 100) % 49 == 0:
-            raise APIError()
+            raise APIError(status_code=503)
+        if random.randint(0, 100) % 49 == 0:
+            raise APIError(status_code=502)
+        if random.randint(0, 300) % 49 == 0:
+            raise APIError(status_code=404)
 
 
 def with_rater(func):
