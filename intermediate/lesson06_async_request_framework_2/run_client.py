@@ -16,7 +16,7 @@ from aiohttp import request, ClientResponseError
 
 from collections import namedtuple
 
-from aframe.errors import ExampleCounter
+from aframe.errors import RequestErrorExampleCounter
 
 AllCustomersQueueItem = namedtuple("all_customers_queue_item", ["method", "hostname", "port", "endpoint"])
 CustomerByIDQueueItem = namedtuple("customers_by_id_queue_item", ["method", "hostname", "port", "endpoint", "id"])
@@ -31,7 +31,7 @@ class AllCustomersWorker(ThrottledWorker):
             return resp
 
     async def handle_error(self, e):
-        self.errors.add(str(e))
+        self.errors.add(e)
         # TODO: slugify error/implement all error metaclasses from customer-api
         self.log({"error": str(e)})
         if isinstance(e, ClientResponseError):
@@ -58,7 +58,8 @@ class CustomerByIDWorker(ThrottledWorker):
             return resp
 
     async def handle_error(self, e):
-        self.errors.add(str(e))
+        self.errors.add(e)
+        print(self.errors.samples)
         self.log({"error": str(e)})
         if isinstance(e, ClientResponseError):
             if e.status == 429:
@@ -103,4 +104,9 @@ async def run_pipeline():
 results, errors = asyncio.run(run_pipeline())
 
 print(results)
-print(ExampleCounter.combine(errors))
+
+
+print(errors)
+print('----')
+r = RequestErrorExampleCounter.combine(errors)
+print(r.serialise())

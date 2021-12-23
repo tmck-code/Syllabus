@@ -130,7 +130,7 @@ class ThrottledWorker:
 
     def __post_init__(self):
         self.in_q.inc_consumer()
-        self.errors = errors.ExampleCounter.sample(100)
+        self.errors = errors.RequestErrorExampleCounter()
 
     @abstractmethod
     async def work(self, d):
@@ -161,6 +161,7 @@ class ThrottledWorker:
                 resp = await self.work(d)
             except Exception as e:
                 await self.handle_error(e)
+                self.errors.add(e)
                 retrying = True
                 continue
             self.log({"req": d, "duration": time.time()-t})
