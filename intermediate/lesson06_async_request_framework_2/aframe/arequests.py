@@ -130,7 +130,7 @@ class ThrottledWorker:
 
     def __post_init__(self):
         self.in_q.inc_consumer()
-        self.errors = errors.ReservoirSampler()
+        self.errors = errors.ExampleCounter.sample(100)
 
     @abstractmethod
     async def work(self, d):

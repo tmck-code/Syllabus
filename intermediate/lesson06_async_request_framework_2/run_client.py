@@ -16,6 +16,8 @@ from aiohttp import request, ClientResponseError
 
 from collections import namedtuple
 
+from aframe.errors import ExampleCounter
+
 AllCustomersQueueItem = namedtuple("all_customers_queue_item", ["method", "hostname", "port", "endpoint"])
 CustomerByIDQueueItem = namedtuple("customers_by_id_queue_item", ["method", "hostname", "port", "endpoint", "id"])
 
@@ -96,6 +98,9 @@ async def run_pipeline():
         PrintFinisher(in_q=results).run(),
     )
 
-    return (results, w.errors, [i.errors for i in wks])
+    return (results, (w.errors, *[i.errors for i in wks]))
 
-print(asyncio.run(run_pipeline()))
+results, errors = asyncio.run(run_pipeline())
+
+print(results)
+print(ExampleCounter.combine(errors))

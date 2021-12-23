@@ -74,7 +74,7 @@ class ExampleCounter(Generic[T]):
 
         return wrapped
 
-    def increment(self, example: Optional[T]) -> None:
+    def add(self, example: Optional[T]) -> None:
         self.count += 1
         if example is not None:
             self.examples.add(example)
@@ -89,3 +89,128 @@ class ExampleCounter(Generic[T]):
             count=self.count, examples=list(set(self.examples.samples)), reason=reason
         )
 
+    @staticmethod
+    def combine(examples: List[ExampleCounter]):
+        count = 0
+        ex = []
+        for e in examples:
+            count += e.count
+            ex.extend(e.examples.samples)
+
+        return ex
+
+
+
+# import json
+# from copy import deepcopy
+# from dataclasses import dataclass
+# from typing import (
+#     Iterator,
+#     List,
+#     Optional,
+# )
+
+# import structlog
+# from facebook_business.exceptions import FacebookRequestError
+
+# from customer_api.activations.activation_errors import (
+#     ActivationErrorRegistry,
+#     ActivationExceptionMetadata,
+# )
+
+
+# @dataclass
+# class FacebookOfflineEventErrorData(Exception):
+#     event: Optional[dict] = None
+#     event_index: Optional[int] = None
+#     message: Optional[str] = ""
+#     type: str = ""
+#     code: Optional[int] = None
+
+#     @staticmethod
+#     def from_dict(dct):
+#         return FacebookOfflineEventErrorData(**dct)
+
+
+# class FacebookOfflineEventErrorDataMeta(
+#     ActivationExceptionMetadata[FacebookOfflineEventErrorData]
+# ):
+#     def should_retry(self, e: FacebookOfflineEventErrorData) -> bool:
+#         return True
+
+#     def slugify_exception(self, e: FacebookOfflineEventErrorData) -> List[str]:
+#         try:
+#             return ["fb_request_error_data", e.type, str(e.code)]
+#         except Exception as err:
+#             return ["fb_request_error_data_error", repr(err)]
+
+
+# class FacebookRequestErrorMeta(ActivationExceptionMetadata[FacebookRequestError]):
+#     def should_retry(self, e: FacebookRequestError) -> bool:
+#         transient_error = e.api_transient_error()
+#         if isinstance(transient_error, bool):
+#             return transient_error
+#         else:
+#             return False
+
+#     def unpack(
+#         self, e: FacebookRequestError
+#     ) -> Iterator[FacebookOfflineEventErrorData]:
+#         for _i, raw_data in e.body()["error"].get("error_data", {}).items():
+#             yield FacebookOfflineEventErrorData(**raw_data)
+
+#     def slugify_exception(self, e: Exception) -> List[str]:
+#         try:
+#             error = FacebookOfflineEventErrorData.from_dict(e)
+#             return ["fb_request_error", error.type, str(error.code)]
+#         except Exception as err:
+#             return ["fb_request_error_error", repr(err)]
+
+
+# class FacebookActivationErrorRegistry(ActivationErrorRegistry):
+#     exceptions = deepcopy(ActivationErrorRegistry.exceptions)
+#     exceptions[FacebookRequestError] = FacebookRequestErrorMeta()
+#     exceptions[FacebookOfflineEventErrorData] = FacebookOfflineEventErrorDataMeta()
+
+
+
+# class ActivationErrorRegistry:
+#     exceptions: Dict[Type, ActivationExceptionMetadata] = {
+#         Exception: ExceptionMeta(),
+#         KeyError: KeyErrorMeta(),
+#         ValueError: ValueErrorMeta(),
+#     }
+
+#     def _get_exception_meta(self, e: Exception) -> ActivationExceptionMetadata:
+#         for klass in self.__superclasses(e):
+#             if klass in self.exceptions:
+#                 return self.exceptions[klass]
+#         else:
+#             # this shouldn't  be reachable as long as e is an Exception
+#             # and Exception is a key in self.exceptions
+#             return self.exceptions[Exception]
+
+#     def __superclasses(self, obj: Any) -> List[Type]:
+#         'Return the superclasses of a class in Method Resolution Order (MRO), ie "nearest" superclass first'
+#         return cast(List[Type], obj.__class__.mro())
+
+#     def unpack(self, e: Exception) -> Iterator[T]:
+#         return self._get_exception_meta(e).unpack(e)
+
+#     def get_slug(self, e: Exception):
+#         return self._get_slug_internal(
+#             *self._get_exception_meta(e).slugify_exception(e)
+#         )
+
+#     def _get_slug_internal(self, *args: str) -> str:
+#         res = slugify("_".join(args), separator="_", max_length=160)
+#         return cast(str, res)
+
+#     def should_retry(self, e: Exception) -> bool:
+#         return self._get_exception_meta(e).should_retry(e)
+
+#     def recoverable(self, e: Exception) -> bool:
+#         return self._get_exception_meta(e).recoverable(e)
+
+#     def should_record_stack(self, e: Exception) -> bool:
+#         return self._get_exception_meta(e).should_record_stack(e)
