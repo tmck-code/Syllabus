@@ -7,123 +7,11 @@ from abc import ABC, abstractmethod
 import time
 import random
 from collections import namedtuple
-
-from aframe.arequests import ThrottledQueue, Sentinel, _fill_queue
-from abc import abstractmethod
-from aiohttp import request, ClientResponseError
-
-
-@dataclass
-class Unpacker:
-    "gets QueueItems from an asyncio.Queue, unpacks to another QueueItem, puts on a ThrottledQueue"
-
-    key: str
-    in_q: asyncio.Queue
-    out_q: ThrottledQueue
-
-    @abstractmethod
-    async def unpack(self, d: namedtuple) -> namedtuple:
-        "Unpacks a queue object/transforms it for a ThrottledWorker"
-
-    @abstractmethod
-    async def handle_error(self, e):
-        "Handles an error"
-
-    def log(self, body: dict):
-        print(json.dumps({self.__class__.__name__: self.key, **body}))
-
-    async def run(self):
-        self.log({"state": "starting"})
-        while True:
-            d = await self.in_q.get()
-            if d == Sentinel:
-                self.log({"state": "exiting"})
-                await self.in_q.put(Sentinel)
-                await self.out_q.put(Sentinel) # there will only ever be 1 unpacker per stage, so it's safe to
-                                               # just put a sentinel on the out_q
-                return
-            try:
-                for el in await self.unpack(d):
-                    self.log({"unpacked": el})
-                    await self.out_q.put(el)
-            except Exception as e:
-                await self.handle_error(self, e)
-
-
-@dataclass
-class ThrottledWorker:
-    "gets QueueItems from a ThrottledQueue, builds into a requests, awaits response and puts on a asyncio.Queue"
-
-    key: str
-    in_q: ThrottledQueue
-    out_q: asyncio.Queue
-
-    def __post_init__(self):
-        self.in_q.inc_consumer()
-
-    @abstractmethod
-    async def work(self, d):
-        "Does some work on a QueueItem and returns the result"
-
-    @abstractmethod
-    async def handle_error(self, e):
-        "Handles an error"
-
-    def log(self, body: dict):
-        print(json.dumps({self.__class__.__name__: self.key, **body}))
-
-    async def run(self):
-        self.log({"state": "starting"})
-        retrying = False
-        while True:
-            if not retrying:
-                d = await self.in_q.get()
-                if d == Sentinel:
-                    self.log({"state": "exiting", "remaining": self.in_q.n_consumers-1})
-                    await self.in_q.put(Sentinel)
-                    self.in_q.dec_consumer()
-                    if self.in_q.n_consumers == 0:
-                        await self.out_q.put(Sentinel)
-                    return
-            t = time.time()
-            try:
-                resp = await self.work(d)
-            except Exception as e:
-                await self.handle_error(e)
-                retrying = True
-                continue
-            self.log({"req": d, "duration": time.time()-t})
-            await self.out_q.put(resp)
-            retrying = False
-
-
-@dataclass
-class Finisher:
-    """
-    Takes items from an asyncio.Queue and transfers to the synchronous work
-    e.g. printing to stdout, collecting to a list, writing to file etc.
-    """
-
-    in_q: asyncio.Queue
-
-    @abstractmethod
-    async def run(self):
-        "Awaits each item in the queue and puts it somewhere"
-
 import sys
 
-@dataclass
-class PrintFinisher(Finisher):
-
-    stream: object = sys.stderr
-
-    async def run(self):
-        while True:
-            d = await self.in_q.get()
-            if d == Sentinel:
-                await self.in_q.put(Sentinel)
-                return
-            print(d.decode(), file=self.stream)
+from aframe.arequests import ThrottledQueue, ThrottledWorker, Unpacker, Finisher, Sentinel, _fill_queue
+from abc import abstractmethod
+from aiohttp import request, ClientResponseError
 
 
 from collections import namedtuple
@@ -142,6 +30,8 @@ class AllCustomersWorker(ThrottledWorker):
 
     async def handle_error(self, e):
         self.log({"error": str(e)})
+        # TODO: slugify error/implement all error metaclasses from customer-api
+        self.errors.add(str(e))
         if isinstance(e, ClientResponseError):
             if e.status == 429:
                 await self.in_q.notify_until(time.time()+random.randint(3, 7))
@@ -167,11 +57,27 @@ class CustomerByIDWorker(ThrottledWorker):
 
     async def handle_error(self, e):
         self.log({"error": str(e)})
+        # TODO: slugify error/implement all error metaclasses from customer-api
+        self.errors.add(str(e))
         if isinstance(e, ClientResponseError):
             if e.status == 429:
                 await self.in_q.notify_until(time.time()+random.randint(3, 7))
             elif e.status == 503:
                 await self.in_q.notify()
+
+@dataclass
+class PrintFinisher(Finisher):
+
+    stream: object = sys.stderr
+
+    async def run(self):
+        while True:
+            d = await self.in_q.get()
+            if d == Sentinel:
+                await self.in_q.put(Sentinel)
+                return
+            print(d.decode(), file=self.stream)
+
 
 async def run_pipeline():
     all_customers_q = await _fill_queue(ThrottledQueue(per_second=1), [AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")])
