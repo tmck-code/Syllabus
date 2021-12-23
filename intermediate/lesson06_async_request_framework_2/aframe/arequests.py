@@ -26,6 +26,8 @@ class ThrottledQueue(asyncio.Queue):
         self.last_get = time.time() # this is the fastest way... I think?
         self.debug = debug
         self.n_consumers = 0
+        self.stats = Counter()
+        # TODO: errors here?
         super(ThrottledQueue, self).__init__(maxsize=maxsize)
 
     async def notify(self, override: int=0):
@@ -128,6 +130,7 @@ class ThrottledWorker:
 
     def __post_init__(self):
         self.in_q.inc_consumer()
+        self.errors = errors.ReservoirSampler()
 
     @abstractmethod
     async def work(self, d):

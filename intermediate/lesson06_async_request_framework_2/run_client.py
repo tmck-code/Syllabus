@@ -29,9 +29,9 @@ class AllCustomersWorker(ThrottledWorker):
             return resp
 
     async def handle_error(self, e):
-        self.log({"error": str(e)})
-        # TODO: slugify error/implement all error metaclasses from customer-api
         self.errors.add(str(e))
+        # TODO: slugify error/implement all error metaclasses from customer-api
+        self.log({"error": str(e)})
         if isinstance(e, ClientResponseError):
             if e.status == 429:
                 await self.in_q.notify_until(time.time()+random.randint(3, 7))
@@ -43,22 +43,21 @@ class AllCustomersUnpacker(Unpacker):
 
     base: AllCustomersQueueItem
 
-    async def unpack(self, d) -> CustomerByIDQueueItem:
+    async def unpack(self, d: str) -> CustomerByIDQueueItem:
         return [CustomerByIDQueueItem(*tuple(self.base), i) for i in json.loads(d)]
 
 @dataclass
 class CustomerByIDWorker(ThrottledWorker):
 
-    async def work(self, d: CustomerByIDQueueItem):
+    async def work(self, d: CustomerByIDQueueItem) -> str:
         async with request(d.method, f"http://{d.hostname}:{d.port}/{d.endpoint}/{d.id}") as req:
             resp = await req.read()
             req.raise_for_status()
             return resp
 
     async def handle_error(self, e):
-        self.log({"error": str(e)})
-        # TODO: slugify error/implement all error metaclasses from customer-api
         self.errors.add(str(e))
+        self.log({"error": str(e)})
         if isinstance(e, ClientResponseError):
             if e.status == 429:
                 await self.in_q.notify_until(time.time()+random.randint(3, 7))
@@ -78,19 +77,25 @@ class PrintFinisher(Finisher):
                 return
             print(d.decode(), file=self.stream)
 
+@dataclass
+class PipelineOfItems:
+    initial_queue: asyncio.Queue
+
 
 async def run_pipeline():
     all_customers_q = await _fill_queue(ThrottledQueue(per_second=1), [AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")])
     customers_by_id_q = ThrottledQueue(per_second=20)
     t, results = asyncio.Queue(), asyncio.Queue()
+    w = AllCustomersWorker(key="0", in_q=all_customers_q, out_q=t)
+    wks = [CustomerByIDWorker(key=str(i), in_q=customers_by_id_q, out_q=results) for i in range(40)]
 
     await asyncio.gather(
-        AllCustomersWorker(key="0", in_q=all_customers_q, out_q=t).run(),
+        w.run(),
         AllCustomersUnpacker(key="0", in_q=t, out_q=customers_by_id_q, base=AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")).run(),
-        *[CustomerByIDWorker(key=str(i), in_q=customers_by_id_q, out_q=results).run() for i in range(40)],
+        *[i.run() for i in wks],
         PrintFinisher(in_q=results).run(),
     )
 
-    return results
+    return (results, w.errors, [i.errors for i in wks])
 
-asyncio.run(run_pipeline())
+print(asyncio.run(run_pipeline()))
