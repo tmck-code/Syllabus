@@ -7,9 +7,9 @@ import time
 from typing import List
 import sys
 
-from aiohttp import ClientResponseError, request
+from aiohttp import request
+from aframe.errors import ErrorSampler
 
-from aframe import errors
 
 class Sentinel: pass
 
@@ -25,9 +25,8 @@ class ThrottledQueue(asyncio.Queue):
         self.per_second = per_second
         self.last_get = time.time() # this is the fastest way... I think?
         self.debug = debug
+        self.errors = ErrorSampler()
         self.n_consumers = 0
-        self.stats = Counter()
-        # TODO: errors here?
         super(ThrottledQueue, self).__init__(maxsize=maxsize)
 
     async def notify(self, override: int=0):
@@ -80,6 +79,9 @@ class ThrottledQueue(asyncio.Queue):
             print(self.i, '- times', f'{elapsed:.5f}', '+', f'{sleep_time:.5f}', '=', self.per_second, '- sizes', self.qsize(), f'{self.qsize() / max(1, self.maxsize):.5f}')
         await asyncio.sleep(max(0, sleep_time)) # Make sure we wait at least 0 seconds
 
+    def record_error(self, e):
+        self.errors.add(e)
+
 @dataclass
 class Unpacker:
     "gets QueueItems from an asyncio.Queue, unpacks to another QueueItem, puts on a ThrottledQueue"
@@ -130,7 +132,6 @@ class ThrottledWorker:
 
     def __post_init__(self):
         self.in_q.inc_consumer()
-        self.errors = errors.RequestErrorExampleCounter()
 
     @abstractmethod
     async def work(self, d):
@@ -139,6 +140,8 @@ class ThrottledWorker:
     @abstractmethod
     async def handle_error(self, e):
         "Handles an error"
+        print("Adding error to in_q errors:", e)
+        self.in_q.errors.add(e)
 
     def log(self, body: dict):
         print(json.dumps({self.__class__.__name__: self.key, **body}))
@@ -161,7 +164,6 @@ class ThrottledWorker:
                 resp = await self.work(d)
             except Exception as e:
                 await self.handle_error(e)
-                self.errors.add(e)
                 retrying = True
                 continue
             self.log({"req": d, "duration": time.time()-t})

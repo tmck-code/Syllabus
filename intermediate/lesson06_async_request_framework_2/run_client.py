@@ -10,16 +10,39 @@ from collections import namedtuple
 import sys
 
 from aframe.arequests import ThrottledQueue, ThrottledWorker, Unpacker, Finisher, Sentinel, _fill_queue
+
 from abc import abstractmethod
-from aiohttp import request, ClientResponseError
+from aiohttp import request, ClientResponseError, ClientTimeout
+
+from copy import deepcopy
+
+from typing import Dict, List, Type, cast
 
 
 from collections import namedtuple
 
-from aframe.errors import RequestErrorExampleCounter
+from aframe.errors import APIExceptionMetadata, APIErrorRegistry, ExceptionMeta
 
 AllCustomersQueueItem = namedtuple("all_customers_queue_item", ["method", "hostname", "port", "endpoint"])
 CustomerByIDQueueItem = namedtuple("customers_by_id_queue_item", ["method", "hostname", "port", "endpoint", "id"])
+
+class ClientResponseErrorMeta(APIExceptionMetadata[ClientResponseError]):
+    def slugify_exception(self, e: ClientResponseError) -> List[str]:
+        # Note that the string represtentation of KeyError is the missing key in single quotes
+        return ["client_response_error", e.code]
+
+
+class ClientTimeoutMeta(APIExceptionMetadata[ClientTimeout]):
+    def slugify_exception(self, e: ClientTimeout) -> List[str]:
+        return ["client_timeout", e.code]
+
+class RequestErrorRegistry(APIErrorRegistry):
+    exceptions = deepcopy(APIErrorRegistry.exceptions)
+    exceptions: Dict[Type, APIExceptionMetadata] = {
+        ClientResponseError: ClientResponseErrorMeta(),
+        ClientTimeout: ClientTimeoutMeta(),
+    }
+
 
 @dataclass
 class AllCustomersWorker(ThrottledWorker):
@@ -58,8 +81,6 @@ class CustomerByIDWorker(ThrottledWorker):
             return resp
 
     async def handle_error(self, e):
-        self.errors.add(e)
-        print(self.errors.samples)
         self.log({"error": str(e)})
         if isinstance(e, ClientResponseError):
             if e.status == 429:
@@ -99,14 +120,10 @@ async def run_pipeline():
         PrintFinisher(in_q=results).run(),
     )
 
-    return (results, (w.errors, *[i.errors for i in wks]))
+    return (results, (customers_by_id_q.errors,))
 
 results, errors = asyncio.run(run_pipeline())
 
 print(results)
 
-
 print(errors)
-print('----')
-r = RequestErrorExampleCounter.combine(errors)
-print(r.serialise())
