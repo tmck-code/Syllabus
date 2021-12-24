@@ -1,68 +1,104 @@
-from __future__ import annotations
+from typing import Any, Dict, Iterator, List, Generic, Type, TypeVar, cast
 
-from dataclasses import dataclass, field
-from random import randint
-from typing import (
-    Callable,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    TypeVar,
-)
-from abc import abstractmethod
-
-from aiohttp import ClientResponseError
-import json
-
+from aiohttp import ClientResponseError, ClientTimeout
 from slugify import slugify
+
 
 T = TypeVar("T")
 
+class ExceptionMetadata(Generic[T]):
+    def should_retry(self, e: T) -> bool:
+        "Should the action be retried?"
+        return False
 
-class ReservoirSampler(Generic[T]):
-    """Randomly sample from a stream of unknown length.
-    https://en.wikipedia.org/wiki/Reservoir_sampling
-    """
+    def slugify_exception(self, e: T) -> List[str]:
+        return ["unknown_exception", str(e)]
 
-    def __init__(self, size: int = 10):
-        self.size = size
-        self.count = 0
-        self.samples: List[T] = []
+    def serialise_exception(self, e: T) -> Dict[str, str]:
+        return {"message": str(e)}
 
-    def add(self, sample: T) -> None:
-        """Attempts to add a sample to the reservoir. If the reservoir is full of samples, there is
-        a chance it will be added by replacing an existing sample, with gradually decreasing
-        probability
-        """
-        if self.count < self.size:
-            self.samples.append(sample)
-        else:
-            k = randint(0, self.count)
-            if k < self.size:
-                self.samples[k] = sample
-        self.count += 1
+    def should_record_stack(self, e: T) -> bool:
+        return False
 
-    def extend(self, samples: Iterable[T]) -> None:
-        "Attempts to add each sample in an iterable to the reservoir"
-        for s in samples:
-            self.add(s)
+    def recoverable(self, e: T) -> bool:
+        "Should the activation continue?"
+        return True
 
-    @classmethod
-    def combine(cls, examples: List[cls]):
-        combined = cls(100)
-        for e in examples:
-            combined.extend(e.samples)
-        return combined
+    def unpack(self, e: T) -> Iterator[T]:
+        "Unpacks nested error objects"
+        yield from []
 
-class RequestErrorExampleCounter(ReservoirSampler[T]):
 
-    def as_dict(self, e: ClientResponseError):
+class ExceptionMeta(ExceptionMetadata[Exception]):
+    def should_record_stack(self, e: T) -> bool:
+        # for an unknown exception, we do actually want to record the stack trace
+        return True
+
+
+class ClientResponseErrorMeta(ExceptionMetadata[ClientResponseError]):
+    def slugify_exception(self, e: ClientResponseError) -> List[str]:
+        # Note that the string represtentation of KeyError is the missing key in single quotes
+        return ["client_response_error", str(e.code)]
+
+    def serialise_exception(self, e: T) -> Dict[str, str]:
         return {
-            "request": {"url": str(e.request_info.real_url), "method": e.request_info.method}, #, "headers": dict(e.request_info.headers)},
             "status":  e.status,
             "message": e.message,
+            "url":     str(e.request_info.real_url)
         }
 
-    def serialise(self, indent=None):
-        return json.dumps([self.as_dict(e) for e in self.samples], indent=2)
+    def should_record_stack(self, e: T) -> bool:
+        return True
+
+
+class ClientTimeoutMeta(ExceptionMetadata[ClientTimeout]):
+    def slugify_exception(self, e: ClientTimeout) -> List[str]:
+        return ["client_timeout", str(e.code)]
+
+    def should_record_stack(self, e: T) -> bool:
+        return True
+
+
+class ExceptionRegistry:
+    exceptions: Dict[Type, ExceptionMetadata] = {
+        Exception: ExceptionMeta(),
+        ClientResponseError: ClientResponseErrorMeta(),
+        ClientTimeout: ClientTimeoutMeta(),
+    }
+
+    def _get_exception_meta(self, e: Exception) -> ExceptionMetadata:
+        for klass in self.__superclasses(e):
+            if klass in self.exceptions:
+                return self.exceptions[klass]
+        else:
+            # this shouldn't  be reachable as long as e is an Exception
+            # and Exception is a key in self.exceptions
+            return self.exceptions[Exception]
+
+    def __superclasses(self, obj: Any) -> List[Type]:
+        'Return the superclasses of a class in Method Resolution Order (MRO), ie "nearest" superclass first'
+        return cast(List[Type], obj.__class__.mro())
+
+    def unpack(self, e: Exception) -> Iterator[T]:
+        return self._get_exception_meta(e).unpack(e)
+
+    def slugify_exception(self, e: Exception):
+        return self._get_slug_internal(
+            *self._get_exception_meta(e).slugify_exception(e)
+        )
+    
+    def serialise_exception(self, e: Exception):
+        return self._get_exception_meta(e).serialise_exception(e)
+
+    def _get_slug_internal(self, *args: str) -> str:
+        res = slugify("_".join(args), separator="_", max_length=160)
+        return cast(str, res)
+
+    def should_retry(self, e: Exception) -> bool:
+        return self._get_exception_meta(e).should_retry(e)
+
+    def recoverable(self, e: Exception) -> bool:
+        return self._get_exception_meta(e).recoverable(e)
+
+    def should_record_stack(self, e: Exception) -> bool:
+        return self._get_exception_meta(e).should_record_stack(e)

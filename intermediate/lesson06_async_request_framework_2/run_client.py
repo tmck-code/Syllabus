@@ -2,21 +2,27 @@
 
 import asyncio
 import json
-from dataclasses import dataclass
-from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from abc import ABC
+from os import error
 import time
 import random
 from collections import namedtuple
 import sys
 
-from aframe.arequests import ThrottledQueue, ThrottledWorker, Unpacker, Finisher, Sentinel, _fill_queue
 from abc import abstractmethod
 from aiohttp import request, ClientResponseError
 
+from aframe.arequests import ThrottledQueue, ThrottledWorker, Unpacker, Finisher, Sentinel, _fill_queue
+from aframe.stats import ActionStats
+from aframe.errors import ExceptionRegistry
 
-from collections import namedtuple
+from copy import deepcopy
+import json
+from multidict import CIMultiDictProxy
 
-from aframe.errors import RequestErrorExampleCounter
+class RequestExceptionRegistry(ExceptionRegistry):
+    exceptions = deepcopy(ExceptionRegistry.exceptions)
 
 AllCustomersQueueItem = namedtuple("all_customers_queue_item", ["method", "hostname", "port", "endpoint"])
 CustomerByIDQueueItem = namedtuple("customers_by_id_queue_item", ["method", "hostname", "port", "endpoint", "id"])
@@ -31,7 +37,6 @@ class AllCustomersWorker(ThrottledWorker):
             return resp
 
     async def handle_error(self, e):
-        self.errors.add(e)
         # TODO: slugify error/implement all error metaclasses from customer-api
         self.log({"error": str(e)})
         if isinstance(e, ClientResponseError):
@@ -51,16 +56,20 @@ class AllCustomersUnpacker(Unpacker):
 @dataclass
 class CustomerByIDWorker(ThrottledWorker):
 
+    error_registry: RequestExceptionRegistry = field(default_factory=RequestExceptionRegistry)
+    stats: ActionStats = field(default_factory=ActionStats)
+    slug: str = "customer_by_id"
+
     async def work(self, d: CustomerByIDQueueItem) -> str:
         async with request(d.method, f"http://{d.hostname}:{d.port}/{d.endpoint}/{d.id}") as req:
             resp = await req.read()
             req.raise_for_status()
+            self.stats.record_success(action_slug=self.slug, success=1)
             return resp
 
     async def handle_error(self, e):
-        self.errors.add(e)
-        print(self.errors.samples)
         self.log({"error": str(e)})
+        self.stats.record_error(action_slug=self.slug, error=self.error_registry.serialise_exception(e), error_slug=self.error_registry.slugify_exception(e))
         if isinstance(e, ClientResponseError):
             if e.status == 429:
                 await self.in_q.notify_until(time.time()+random.randint(3, 7))
@@ -89,8 +98,9 @@ async def run_pipeline():
     all_customers_q = await _fill_queue(ThrottledQueue(per_second=1), [AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")])
     customers_by_id_q = ThrottledQueue(per_second=20)
     t, results = asyncio.Queue(), asyncio.Queue()
+    stats = ActionStats()
     w = AllCustomersWorker(key="0", in_q=all_customers_q, out_q=t)
-    wks = [CustomerByIDWorker(key=str(i), in_q=customers_by_id_q, out_q=results) for i in range(40)]
+    wks = [CustomerByIDWorker(key=str(i), in_q=customers_by_id_q, out_q=results, stats=stats) for i in range(40)]
 
     await asyncio.gather(
         w.run(),
@@ -99,14 +109,10 @@ async def run_pipeline():
         PrintFinisher(in_q=results).run(),
     )
 
-    return (results, (w.errors, *[i.errors for i in wks]))
+    return (results, stats)
 
-results, errors = asyncio.run(run_pipeline())
+results, stats = asyncio.run(run_pipeline())
 
 print(results)
-
-
-print(errors)
-print('----')
-r = RequestErrorExampleCounter.combine(errors)
-print(r.serialise())
+print(stats)
+print(json.dumps(stats.as_dict(), indent=2))

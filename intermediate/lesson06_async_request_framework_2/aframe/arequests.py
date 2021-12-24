@@ -1,15 +1,11 @@
 from abc import ABC, abstractmethod, abstractproperty
 import asyncio
-from collections import Counter, namedtuple
+from collections import Counter, namedtuple, defaultdict
 from dataclasses import field, dataclass
 import json
 import time
-from typing import List
-import sys
 
 from aiohttp import ClientResponseError, request
-
-from aframe import errors
 
 class Sentinel: pass
 
@@ -26,7 +22,6 @@ class ThrottledQueue(asyncio.Queue):
         self.last_get = time.time() # this is the fastest way... I think?
         self.debug = debug
         self.n_consumers = 0
-        self.stats = Counter()
         # TODO: errors here?
         super(ThrottledQueue, self).__init__(maxsize=maxsize)
 
@@ -130,7 +125,6 @@ class ThrottledWorker:
 
     def __post_init__(self):
         self.in_q.inc_consumer()
-        self.errors = errors.RequestErrorExampleCounter()
 
     @abstractmethod
     async def work(self, d):
@@ -161,7 +155,6 @@ class ThrottledWorker:
                 resp = await self.work(d)
             except Exception as e:
                 await self.handle_error(e)
-                self.errors.add(e)
                 retrying = True
                 continue
             self.log({"req": d, "duration": time.time()-t})

@@ -1,0 +1,37 @@
+{
+    "actions": {
+        "get_all_customers": {
+            "counts": {
+                "success": 1,
+                "errors": 0,
+                "total": 1
+            },
+            "error_detail": {
+                "counts": {},
+                "samples": []
+            }
+        },
+        "get_customers_by_id": {
+            "success": 70,
+            "errors": 2,
+            "total": 72,
+            "error_detail": {
+                "counts": {
+                    "client_response_error_503": 2
+                },
+                "samples": [
+                    "client_response_error_503_service_unavailable",
+                    "client_response_error_503_service_unavailable",
+                    "client_response_error_503_service_unavailable",
+                    "client_response_error_503_service_unavailable",
+                    "client_response_error_503_service_unavailable",
+                    "client_response_error_503_service_unavailable",
+                    "client_response_error_503_service_unavailable",
+                    "client_response_error_503_service_unavailable",
+                    "client_response_error_503_service_unavailable"
+                ]
+            }
+        }
+    }
+}
+    
