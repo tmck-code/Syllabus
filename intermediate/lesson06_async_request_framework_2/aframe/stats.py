@@ -97,13 +97,14 @@ def stats_factory():
 
 @dataclass
 class ActionStats:
+    error_registry: ExceptionRegistry
     actions: Dict[str, Stats] = field(default_factory=stats_factory)
 
     def record_success(self, action_slug: str, success: int=1):
         self.actions[action_slug].record_success(success)
 
-    def record_error(self, action_slug: str, error, error_slug=''):
-        self.actions[action_slug].record_error(error, error_slug)
+    def record_error(self, action_slug: str, error):
+        self.actions[action_slug].record_error(self.error_registry.serialise_exception(error), self.error_registry.slugify_exception(error))
 
     def as_dict(self):
         return {k: v.as_dict() for k, v in self.actions.items()}

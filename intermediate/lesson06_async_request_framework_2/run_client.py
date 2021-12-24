@@ -53,11 +53,13 @@ class AllCustomersUnpacker(Unpacker):
     async def unpack(self, d: str) -> CustomerByIDQueueItem:
         return [CustomerByIDQueueItem(*tuple(self.base), i) for i in json.loads(d)]
 
+error_registry: RequestExceptionRegistry = field(default_factory=RequestExceptionRegistry)
+
+
 @dataclass
 class CustomerByIDWorker(ThrottledWorker):
 
-    error_registry: RequestExceptionRegistry = field(default_factory=RequestExceptionRegistry)
-    stats: ActionStats = field(default_factory=ActionStats)
+    stats: ActionStats
     slug: str = "customer_by_id"
 
     async def work(self, d: CustomerByIDQueueItem) -> str:
@@ -69,7 +71,7 @@ class CustomerByIDWorker(ThrottledWorker):
 
     async def handle_error(self, e):
         self.log({"error": str(e)})
-        self.stats.record_error(action_slug=self.slug, error=self.error_registry.serialise_exception(e), error_slug=self.error_registry.slugify_exception(e))
+        self.stats.record_error(action_slug=self.slug, error=e)
         if isinstance(e, ClientResponseError):
             if e.status == 429:
                 await self.in_q.notify_until(time.time()+random.randint(3, 7))
@@ -98,7 +100,7 @@ async def run_pipeline():
     all_customers_q = await _fill_queue(ThrottledQueue(per_second=1), [AllCustomersQueueItem("get", "0.0.0.0", "8080", "items")])
     customers_by_id_q = ThrottledQueue(per_second=20)
     t, results = asyncio.Queue(), asyncio.Queue()
-    stats = ActionStats()
+    stats = ActionStats(error_registry=ExceptionRegistry())
     w = AllCustomersWorker(key="0", in_q=all_customers_q, out_q=t)
     wks = [CustomerByIDWorker(key=str(i), in_q=customers_by_id_q, out_q=results, stats=stats) for i in range(40)]
 

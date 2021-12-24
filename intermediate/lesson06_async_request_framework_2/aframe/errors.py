@@ -17,9 +17,6 @@ class ExceptionMetadata(Generic[T]):
     def serialise_exception(self, e: T) -> Dict[str, str]:
         return {"message": str(e)}
 
-    def should_record_stack(self, e: T) -> bool:
-        return False
-
     def recoverable(self, e: T) -> bool:
         "Should the activation continue?"
         return True
@@ -42,28 +39,23 @@ class ClientResponseErrorMeta(ExceptionMetadata[ClientResponseError]):
 
     def serialise_exception(self, e: T) -> Dict[str, str]:
         return {
+            "slug":    self.slugify_exception(e),
             "status":  e.status,
             "message": e.message,
             "url":     str(e.request_info.real_url)
         }
-
-    def should_record_stack(self, e: T) -> bool:
-        return True
 
 
 class ClientTimeoutMeta(ExceptionMetadata[ClientTimeout]):
     def slugify_exception(self, e: ClientTimeout) -> List[str]:
         return ["client_timeout", str(e.code)]
 
-    def should_record_stack(self, e: T) -> bool:
-        return True
-
 
 class ExceptionRegistry:
     exceptions: Dict[Type, ExceptionMetadata] = {
-        Exception: ExceptionMeta(),
+        Exception:           ExceptionMeta(),
         ClientResponseError: ClientResponseErrorMeta(),
-        ClientTimeout: ClientTimeoutMeta(),
+        ClientTimeout:       ClientTimeoutMeta(),
     }
 
     def _get_exception_meta(self, e: Exception) -> ExceptionMetadata:
@@ -99,6 +91,3 @@ class ExceptionRegistry:
 
     def recoverable(self, e: Exception) -> bool:
         return self._get_exception_meta(e).recoverable(e)
-
-    def should_record_stack(self, e: Exception) -> bool:
-        return self._get_exception_meta(e).should_record_stack(e)
