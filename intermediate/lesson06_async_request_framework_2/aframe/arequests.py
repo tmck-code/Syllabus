@@ -54,7 +54,7 @@ class ThrottledQueue(asyncio.Queue):
                 print("SKIPPING")
 
     async def get(self):
-        # If there are
+        # TODO: explain the emergency lock here
         async with self.lock:
             async with self.emergency_lock:
                 pass
@@ -72,6 +72,7 @@ class ThrottledQueue(asyncio.Queue):
         elapsed = time.time() - self.last_get
         sleep_time = (1/float(self.per_second)) - elapsed
         if self.debug:
+            # TODO: actually do a good struct log here
             print(self.i, '- times', f'{elapsed:.5f}', '+', f'{sleep_time:.5f}', '=', self.per_second, '- sizes', self.qsize(), f'{self.qsize() / max(1, self.maxsize):.5f}')
         await asyncio.sleep(max(0, sleep_time)) # Make sure we wait at least 0 seconds
 
@@ -90,8 +91,13 @@ class Unpacker:
     @abstractmethod
     async def handle_error(self, e):
         "Handles an error"
+        # TODO: This should record different failures that could be returned from a server.'
+        # - Slug the name (and include the status code)
+        # - Include additional info in (TBH) form
+        # - Try to classify the source of the error (e.g. was it our fault, users fault, config gone wrong ec.)
 
     def log(self, body: dict):
+        # TODO: Define a structured logging form that all taps must implement and extend
         print(json.dumps({self.__class__.__name__: self.key, **body}))
 
     async def run(self):
@@ -101,8 +107,8 @@ class Unpacker:
             if d == Sentinel:
                 self.log({"state": "exiting"})
                 await self.in_q.put(Sentinel)
-                await self.out_q.put(Sentinel) # there will only ever be 1 unpacker per stage, so it's safe to
-                                               # just put a sentinel on the out_q
+                await self.out_q.put(Sentinel)
+                # there will only ever be 1 unpacker per stage, so it's safe to just put a sentinel on the out_q
                 return
             try:
                 for el in await self.unpack(d):
@@ -176,6 +182,7 @@ class Finisher:
         "Awaits each item in the queue and puts it somewhere"
 
 
+# TODO: move these somewhere better & define them better 
 async def _fill_queue(q, items):
     for i in items:
         await q.put(i)
