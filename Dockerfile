@@ -2,12 +2,6 @@ FROM jupyter/datascience-notebook
 
 WORKDIR /code
 
-# The pip dependencies are the least likely to change
-USER jovyan
-ADD requirements.txt .
-RUN python3 -m pip install --upgrade pip && \
-    python3 -m pip install --no-cache-dir --upgrade -r requirements.txt
-
 USER root
 
 # Next the java dependency is not likely to change often
@@ -42,5 +36,9 @@ RUN wget --progress=dot:giga "https://archive.apache.org/dist/spark/spark-${APAC
     && mv -v "${install_root}/spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}" "${install_root}/spark"
 
 WORKDIR /code
+
 USER jovyan
+ADD requirements.txt .
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir --upgrade -r requirements.txt
 
