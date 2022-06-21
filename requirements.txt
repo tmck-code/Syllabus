@@ -12,6 +12,7 @@ memory_profiler
 
 aiohttp
 faker
+genson
 jupyterthemes
 pyspark
 requests
