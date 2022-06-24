@@ -11,9 +11,10 @@ memory_profiler
 # jupyterlab-kite>=2.0.2
 
 aiohttp
-throttler
 faker
-requests
+genson
 jupyterthemes
+pyspark
+requests
 tenacity
-
+throttler
