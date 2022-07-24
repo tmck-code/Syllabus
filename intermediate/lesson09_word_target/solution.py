@@ -2,59 +2,16 @@
 
 import urllib.request
 from dataclasses import dataclass
+from copy import copy
+import time
+from itertools import permutations
 
-def get_words():
+def get_words(n=9):
     urllib.request.urlretrieve("https://github.com/dwyl/english-words/raw/master/words_alpha.txt", "words_alpha.txt")
     with open('words_alpha.txt', 'r') as istream:
         for line in map(str.strip, istream):
-            if len(line) == 9:
+            if len(line) == n:
                 yield line
-
-def permutations(iterable, r=None, mapping=set()):
-    # permutations('ABCD', 2) --> AB AC AD BA BC BD CA CB CD DA DB DC
-    # permutations(range(3)) --> 012 021 102 120 201 210
-
-    pool = tuple(iterable)
-    n = len(pool)
-    r = n if r is None else r
-    if r > n:
-        return
-    indices = list(range(n))
-    cycles = list(range(n, n-r, -1))
-
-    option = tuple(pool[i] for i in indices[:r])
-
-    if mapping:
-        if option[:2] in mapping:
-            # print('✓', option)
-            yield option
-    else:
-        yield option
-
-    while n:
-        for i in reversed(range(r)):
-            cycles[i] -= 1
-            if cycles[i] == 0:
-                indices[i:] = indices[i+1:] + indices[i:i+1]
-                cycles[i] = n - i
-            else:
-                j = cycles[i]
-                indices[i], indices[-j] = indices[-j], indices[i]
-                option = tuple(pool[i] for i in indices[:r])
-                # print('->', option)
-
-                if mapping:
-                    if option[:2] in mapping:
-                        # print('✓', option)
-                        yield option
-                        break
-                    else:
-                        break
-                else:
-                    yield option
-                break
-        else:
-            return
 
 class Solver:
     def __init__(self, words):
@@ -67,31 +24,58 @@ class MySolver(Solver):
     def __init__(self, words, use_mapping=True):
         self.words = set(words)
         self.mappings = set()
+        self.use_mapping = use_mapping
         if use_mapping:
             for word in self.words:
                 self.mappings.add(tuple(word[:2]))
 
     def solve(self, puzzle: str):
         seen = []
-        options = list(permutations(puzzle.lower(), r=9, mapping=self.mappings))
-        # options = list(permutations(puzzle.lower(), r=9))
-        # print('->', len(options), options)
-        for possible in options:
+        if self.use_mapping:
+            options = self.headify(puzzle, n=2, mappings=self.mappings)
+        else:
+            options = permutations(puzzle)
+
+        for i, possible in enumerate(options):
             if ''.join(possible) in self.words:
                 result = ''.join(possible)
                 if result not in seen:
                     yield result
                     seen.append(result)
+        print('total:', i)
 
-import time
+    def headify(self, s, n=1, mappings=[]):
+        s = list(s)
+        for head in permutations(s, n):
+            if self.use_mapping and head not in mappings:
+                continue
+            pool = copy(s)
+            for el in head:
+                # print(el, pool)
+                pool.remove(el)
+            for p in permutations(pool):
+                yield *head, *p
 
-start = time.time()
-s = MySolver(get_words())
-print(list(s.solve('appealign')))
-print(time.time()-start)
 
-start = time.time()
-s = MySolver(get_words(), use_mapping=False)
-print(list(s.solve('appealign')))
-print(time.time()-start)
+def test(puzzle):
+    n = len(puzzle)
+    print('->', n, puzzle)
 
+    s = MySolver(get_words(n))
+    start = time.time()
+    print(list(s.solve(puzzle)))
+    print(f'{time.time()-start:.05f}')
+
+    s = MySolver(get_words(n), use_mapping=False)
+    start = time.time()
+    print(list(s.solve(puzzle)))
+    print(f'{time.time()-start:.05f}')
+
+words = [
+    'appealign',
+    'ayahausca',
+    'residents',
+]
+
+for w in words:
+    test(w)
