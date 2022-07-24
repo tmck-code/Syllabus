@@ -21,18 +21,19 @@ class Solver:
         pass
 
 class MySolver(Solver):
-    def __init__(self, words, use_mapping=True):
+    def __init__(self, words, prefix_length=2):
         self.words = set(words)
         self.mappings = set()
-        self.use_mapping = use_mapping
-        if use_mapping:
+        self.prefix_length = prefix_length
+        if self.prefix_length:
             for word in self.words:
-                self.mappings.add(tuple(word[:2]))
+                self.mappings.add(tuple(word[:self.prefix_length]))
+        self.i = 0
 
     def solve(self, puzzle: str):
         seen = []
-        if self.use_mapping:
-            options = self.headify(puzzle, n=2, mappings=self.mappings)
+        if self.prefix_length:
+            options = self.headify(puzzle, n=self.prefix_length, mappings=self.mappings)
         else:
             options = permutations(puzzle)
 
@@ -42,12 +43,12 @@ class MySolver(Solver):
                 if result not in seen:
                     yield result
                     seen.append(result)
-        print('total:', i)
+        self.i = i
 
     def headify(self, s, n=1, mappings=[]):
         s = list(s)
         for head in permutations(s, n):
-            if self.use_mapping and head not in mappings:
+            if mappings and head not in mappings:
                 continue
             pool = copy(s)
             for el in head:
@@ -59,17 +60,18 @@ class MySolver(Solver):
 
 def test(puzzle):
     n = len(puzzle)
-    print('->', n, puzzle)
+    print('-->\n', n, puzzle)
 
-    s = MySolver(get_words(n))
+    s = MySolver(get_words(n), prefix_length=0)
     start = time.time()
-    print(list(s.solve(puzzle)))
-    print(f'{time.time()-start:.05f}')
+    result = list(s.solve(puzzle))
+    print(f'{time.time()-start:.05f}, ', 'total:', s.i, ', prefix len:', s.prefix_length, ', ', result)
 
-    s = MySolver(get_words(n), use_mapping=False)
-    start = time.time()
-    print(list(s.solve(puzzle)))
-    print(f'{time.time()-start:.05f}')
+    for pl in [2,3,4,5,6,7]:
+        s = MySolver(get_words(n), prefix_length=pl)
+        start = time.time()
+        result = list(s.solve(puzzle))
+        print(f'{time.time()-start:.05f}, ', 'total:', s.i, ', prefix len:', s.prefix_length, ', ', result)
 
 words = [
     'appealign',
@@ -79,3 +81,33 @@ words = [
 
 for w in words:
     test(w)
+
+
+#  ☯ ~/d/s/i/lesson09_word_target python3 solution.py
+# -->
+#  9 appealign
+# 0.05662,  total: 362879 , prefix len: 0 ,  ['appealing', 'panplegia', 'lagniappe']
+# 0.07152,  total: 287279 , prefix len: 2 ,  ['appealing', 'panplegia', 'lagniappe']
+# 0.04630,  total: 179999 , prefix len: 3 ,  ['appealing', 'panplegia', 'lagniappe']
+# 0.01518,  total: 57839 , prefix len: 4 ,  ['appealing', 'panplegia', 'lagniappe']
+# 0.00419,  total: 9263 , prefix len: 5 ,  ['appealing', 'panplegia', 'lagniappe']
+# 0.00511,  total: 887 , prefix len: 6 ,  ['appealing', 'panplegia', 'lagniappe']
+# 0.01213,  total: 75 , prefix len: 7 ,  ['appealing', 'panplegia', 'lagniappe']
+# -->
+#  9 ayahausca
+# 0.05414,  total: 362879 , prefix len: 0 ,  ['ayahausca', 'ayahuasca']
+# 0.07468,  total: 302399 , prefix len: 2 ,  ['ayahausca', 'ayahuasca']
+# 0.03674,  total: 147599 , prefix len: 3 ,  ['ayahausca', 'ayahuasca']
+# 0.00498,  total: 19199 , prefix len: 4 ,  ['ayahausca', 'ayahuasca']
+# 0.00149,  total: 2207 , prefix len: 5 ,  ['ayahausca', 'ayahuasca']
+# 0.00345,  total: 287 , prefix len: 6 ,  ['ayahausca', 'ayahuasca']
+# 0.01120,  total: 95 , prefix len: 7 ,  ['ayahausca', 'ayahuasca']
+# -->
+#  9 residents
+# 0.05310,  total: 362879 , prefix len: 0 ,  ['residents', 'dissenter', 'triedness', 'tiredness']
+# 0.06476,  total: 251999 , prefix len: 2 ,  ['residents', 'dissenter', 'triedness', 'tiredness']
+# 0.04216,  total: 166319 , prefix len: 3 ,  ['residents', 'dissenter', 'triedness', 'tiredness']
+# 0.01422,  total: 54599 , prefix len: 4 ,  ['residents', 'dissenter', 'triedness', 'tiredness']
+# 0.00481,  total: 12983 , prefix len: 5 ,  ['residents', 'dissenter', 'triedness', 'tiredness']
+# 0.00448,  total: 1871 , prefix len: 6 ,  ['residents', 'dissenter', 'triedness', 'tiredness']
+# 0.01152,  total: 263 , prefix len: 7 ,  ['residents', 'dissenter', 'triedness', 'tiredness']
