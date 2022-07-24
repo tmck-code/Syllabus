@@ -10,7 +10,7 @@ def get_words():
             if len(line) == 9:
                 yield line
 
-def permutations(iterable, r=None, mapping=[]):
+def permutations(iterable, r=None, mapping=set()):
     # permutations('ABCD', 2) --> AB AC AD BA BC BD CA CB CD DA DB DC
     # permutations(range(3)) --> 012 021 102 120 201 210
 
@@ -25,11 +25,9 @@ def permutations(iterable, r=None, mapping=[]):
     option = tuple(pool[i] for i in indices[:r])
 
     if mapping:
-        for m in mapping:
-            # print('->', m, option, option[:len(m)])
-            if m == option[:len(m)]:
-                # print('✓', option)
-                yield option
+        if option[:2] in mapping:
+            # print('✓', option)
+            yield option
     else:
         yield option
 
@@ -46,11 +44,12 @@ def permutations(iterable, r=None, mapping=[]):
                 # print('->', option)
 
                 if mapping:
-                    for m in mapping:
-                        # print('->', m, option, option[:len(m)])
-                        if m == option[:len(m)]:
-                            # print('✓', option)
-                            yield option
+                    if option[:2] in mapping:
+                        # print('✓', option)
+                        yield option
+                        break
+                    else:
+                        break
                 else:
                     yield option
                 break
@@ -65,15 +64,16 @@ class Solver:
         pass
 
 class MySolver(Solver):
-    def __init__(self, words):
+    def __init__(self, words, use_mapping=True):
         self.words = set(words)
         self.mappings = set()
-        for word in self.words:
-            self.mappings.add(tuple(word[:2]))
+        if use_mapping:
+            for word in self.words:
+                self.mappings.add(tuple(word[:2]))
 
     def solve(self, puzzle: str):
         seen = []
-        options = list(permutations(puzzle.lower(), r=9, mapping=list(self.mappings)))
+        options = list(permutations(puzzle.lower(), r=9, mapping=self.mappings))
         # options = list(permutations(puzzle.lower(), r=9))
         # print('->', len(options), options)
         for possible in options:
@@ -83,5 +83,15 @@ class MySolver(Solver):
                     yield result
                     seen.append(result)
 
+import time
+
+start = time.time()
 s = MySolver(get_words())
 print(list(s.solve('appealign')))
+print(time.time()-start)
+
+start = time.time()
+s = MySolver(get_words(), use_mapping=False)
+print(list(s.solve('appealign')))
+print(time.time()-start)
+
