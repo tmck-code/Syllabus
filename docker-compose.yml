@@ -15,6 +15,8 @@ services:
       - .:/code
       - vscode-syllabus:/root/.vscode-server
     container_name: syllabus
+    links:
+      - localstack
     # links:
     #   - canned
 
@@ -26,6 +28,14 @@ services:
       - "80:80"
     volumes:
       - ./canned/responses:/responses
+
+  localstack:
+    image: localstack/localstack
+    environment:
+      - SERVICES=s3
+      - HOSTNAME_EXTERNAL=localstack
+    ports:
+      - "4566"
 
 volumes:
   vscode-syllabus:
