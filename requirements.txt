@@ -19,3 +19,5 @@ requests
 tenacity
 throttler
 boto3
+requests-mock
+moto
