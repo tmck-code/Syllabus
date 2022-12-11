@@ -5,4 +5,8 @@ syllabus:
 	docker-compose up
 	docker-compose down
 
-.PHONY: build syllabus
+syllabus-intermediate:
+	docker-compose up syllabus-intermediate
+	docker-compose down
+
+.PHONY: build syllabus syllabus-intermediate

@@ -9,35 +9,23 @@ services:
       - JUPYTER_ENABLE_LAB=yes
         #  - JUPYTER_TOKEN=yolo
     command: jupyter lab --ip 0.0.0.0 --port 8888 --no-browser
-    expose:
-      - "8888"
+    ports:
+      - "8888:8888"
     volumes:
       - .:/code
       - vscode-syllabus:/root/.vscode-server
-
-  syllabus-intermediate:
-    build:
-      context: intermediate/
-      dockerfile: Dockerfile
-    environment:
-      - JUPYTER_ENABLE_LAB=yes
-        #  - JUPYTER_TOKEN=yolo
-    command: jupyter lab --ip 0.0.0.0 --port 8888 --no-browser
-    expose:
-      - "8888"
-    volumes:
-      - .:/code
-      - vscode-syllabus:/root/.vscode-server
+    container_name: syllabus
     links:
       - localstack
-      - canned
+    # links:
+    #   - canned
 
   canned:
     build:
       context: ./canned
       dockerfile: Dockerfile
-    expose:
-      - "80"
+    ports:
+      - "80:80"
     volumes:
       - ./canned/responses:/responses
 
@@ -46,7 +34,7 @@ services:
     environment:
       - SERVICES=s3
       - HOSTNAME_EXTERNAL=localstack
-    expose:
+    ports:
       - "4566"
 
 volumes:

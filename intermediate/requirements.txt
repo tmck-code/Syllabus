@@ -1,0 +1,23 @@
+tabulate
+pygments
+mypy
+
+jupyter
+jupyterlab
+rise
+jupyterlab-drawio
+jupyterlab_execute_time
+memory_profiler
+# jupyterlab-kite>=2.0.2
+
+aiohttp
+faker
+genson
+jupyterthemes
+pyspark
+requests
+tenacity
+throttler
+boto3
+requests-mock
+moto
