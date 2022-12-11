@@ -4,9 +4,6 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
 
-from pygments import highlight
-from pygments.lexers import JsonLexer
-from pygments.formatters import TerminalTrueColorFormatter
 
 from IPython.display import JSON
 from IPython.core.display_functions import display
@@ -15,6 +12,10 @@ import spark_utils
 
 SPARK = spark_utils.spark_context()
 
+from pygments import highlight
+from pygments.lexers import JsonLexer
+from pygments.formatters import TerminalTrueColorFormatter
+
 def ppd(d, indent=2):
     'pretty-prints a dict'
     print(highlight(
@@ -22,7 +23,6 @@ def ppd(d, indent=2):
         lexer     = JsonLexer(),
         formatter = TerminalTrueColorFormatter(style='material')
     ).strip())
-
 def ppj(j, indent=2):
     'pretty-prints a JSON string'
     ppd(json.loads(j), indent=indent)
@@ -53,4 +53,3 @@ class DFLoader:
         ppj(df.schema.json())
         # display(JSON(json.loads(df.schema.json()), expanded=True))
         return df
-    
